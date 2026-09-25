@@ -1,0 +1,11 @@
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="md_theme_light_primary">#B3261E</color>
+    <color name="md_theme_light_onPrimary">#FFFFFF</color>
+    <color name="md_theme_light_primaryContainer">#F9DEDC</color>
+    <color name="md_theme_light_onPrimaryContainer">#410E0B</color>
+    <color name="md_theme_light_secondary">#775652</color>
+    <color name="md_theme_light_onSecondary">#FFFFFF</color>
+    <color name="md_theme_light_error">#BA1A1A</color>
+</resources>
