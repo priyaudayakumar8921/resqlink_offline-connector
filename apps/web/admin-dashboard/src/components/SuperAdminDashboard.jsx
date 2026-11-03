@@ -6,14 +6,15 @@ import {
   Network, Truck, ShieldBan, MessageSquare, Phone, MessagesSquare, Mic, Image,
   Tent, Video, Route, Waves, Users, Package, Search, BrainCircuit, Droplets,
   CloudRain, TrendingUp, Sliders, Database, Sparkles, ArrowRight, BookmarkCheck,
-  Calendar, Layers, ArrowUpRight
+  Calendar, Layers, ArrowUpRight, Maximize2, Minimize2, Eye, EyeOff
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polygon, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { API_BASE_URL } from '../config';
 import AIFloodPredictor from './AIFloodPredictor';
 import AIRoadmap from './AIRoadmap';
+import keralaMaskPositions from '../data/kerala_mask.json';
 
 // Fix for default leaflet icons not showing in React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -29,6 +30,18 @@ const KERALA_BOUNDS = [
   [8.15, 74.80], // Southwest coordinate
   [12.85, 77.55] // Northeast coordinate
 ];
+
+function MapResizeController({ isFullscreen }) {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+      map.fitBounds(KERALA_BOUNDS, { padding: [20, 20], animate: true });
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [isFullscreen, map]);
+  return null;
+}
 
 // Specification Metadata for Less Important / Upcoming Modules
 const COMING_SOON_DATA = {
@@ -202,6 +215,16 @@ export default function Dashboard({ onLogout }) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedAudio, setRecordedAudio] = useState(null);
   const [showFloodHazardLayer, setShowFloodHazardLayer] = useState(true);
+  const [isFullscreenMap, setIsFullscreenMap] = useState(false);
+  const [enableKeralaMask, setEnableKeralaMask] = useState(true);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setIsFullscreenMap(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const toggleRecord = (e) => {
     e.preventDefault();
@@ -724,29 +747,131 @@ export default function Dashboard({ onLogout }) {
 
         {/* 6. GIS Live Heatmap */}
         {activeView === 'GIS' && (
-           <div className="glass-panel" style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column' }}>
-             <div className="flex justify-between items-center flex-wrap gap-2" style={{ marginBottom: '1rem' }}>
-               <h3 className="flex items-center gap-2 text-gradient" style={{ margin: 0 }}>
-                 <MapIcon size={20}/> GIS Live Kerala Heatmap
-               </h3>
-               
-               <div className="flex items-center gap-3">
-                 <label className="flex items-center gap-2 cursor-pointer font-bold" style={{ fontSize: '0.85rem' }}>
-                   <input 
-                     type="checkbox" 
-                     checked={showFloodHazardLayer} 
-                     onChange={(e) => setShowFloodHazardLayer(e.target.checked)} 
-                   />
-                   <span>🌊 Show AI Flood Hazard Districts</span>
-                 </label>
-                 <button onClick={() => setActiveView('FLOOD_AI')} className="btn" style={{ padding: '4px 10px', fontSize: '0.8rem', border: '1px solid var(--border-light)' }}>
-                   Open Full Predictor &rarr;
-                 </button>
-                 <span className="badge badge-primary font-bold">Google Satellite Hybrid</span>
-               </div>
-             </div>
+           <div 
+             className={isFullscreenMap ? "" : "glass-panel"} 
+             style={isFullscreenMap ? {
+               position: 'fixed',
+               top: 0,
+               left: 0,
+               width: '100vw',
+               height: '100vh',
+               zIndex: 99999,
+               background: '#020617',
+               display: 'flex',
+               flexDirection: 'column',
+               padding: 0
+             } : {
+               flex: 1, 
+               padding: '1rem', 
+               display: 'flex', 
+               flexDirection: 'column'
+             }}
+           >
+             {isFullscreenMap ? (
+               <div style={{
+                 background: 'rgba(15, 23, 42, 0.95)',
+                 backdropFilter: 'blur(8px)',
+                 borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+                 padding: '0.75rem 1.25rem',
+                 display: 'flex',
+                 justifyContent: 'space-between',
+                 alignItems: 'center',
+                 flexWrap: 'wrap',
+                 gap: '0.75rem',
+                 zIndex: 1000
+               }}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                   <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 10px #ef4444' }} />
+                   <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#f8fafc' }}>
+                     KERALA STATEWIDE GIS COMMAND HEATMAP — FULLSCREEN
+                   </span>
+                   {enableKeralaMask && (
+                     <span style={{ background: '#10b981', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 'bold' }}>
+                       🛡️ KERALA ISOLATED
+                     </span>
+                   )}
+                 </div>
 
-             <div style={{ flex: 1, borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)', minHeight: '75vh', position: 'relative' }}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                   <button
+                     onClick={() => setEnableKeralaMask(!enableKeralaMask)}
+                     style={{
+                       padding: '5px 10px',
+                       borderRadius: '6px',
+                       border: '1px solid rgba(255,255,255,0.2)',
+                       fontSize: '0.75rem',
+                       fontWeight: 'bold',
+                       cursor: 'pointer',
+                       background: enableKeralaMask ? 'rgba(2, 132, 199, 0.35)' : 'rgba(255,255,255,0.08)',
+                       color: 'white',
+                       display: 'flex',
+                       alignItems: 'center',
+                       gap: '4px'
+                     }}
+                   >
+                     {enableKeralaMask ? <Eye size={13} /> : <EyeOff size={13} />}
+                     {enableKeralaMask ? 'Kerala Isolated' : 'Regional View'}
+                   </button>
+                   <button onClick={() => setActiveView('FLOOD_AI')} className="btn" style={{ padding: '5px 10px', fontSize: '0.75rem', border: '1px solid var(--border-light)' }}>
+                     Open AI Flood Predictor &rarr;
+                   </button>
+                   <button
+                     onClick={() => setIsFullscreenMap(false)}
+                     style={{
+                       padding: '5px 12px',
+                       borderRadius: '6px',
+                       border: 'none',
+                       background: '#ef4444',
+                       color: 'white',
+                       fontSize: '0.78rem',
+                       fontWeight: 'bold',
+                       cursor: 'pointer',
+                       display: 'flex',
+                       alignItems: 'center',
+                       gap: '4px'
+                     }}
+                   >
+                     <Minimize2 size={14} /> Exit Fullscreen [Esc]
+                   </button>
+                 </div>
+               </div>
+             ) : (
+               <div className="flex justify-between items-center flex-wrap gap-2" style={{ marginBottom: '1rem' }}>
+                 <h3 className="flex items-center gap-2 text-gradient" style={{ margin: 0 }}>
+                   <MapIcon size={20}/> GIS Live Kerala Heatmap
+                 </h3>
+                 
+                 <div className="flex items-center gap-3 flex-wrap">
+                   <button 
+                     onClick={() => setIsFullscreenMap(true)} 
+                     className="btn btn-primary" 
+                     style={{ padding: '4px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '5px' }}
+                   >
+                     <Maximize2 size={14} /> Fullscreen Map
+                   </button>
+                   <button 
+                     onClick={() => setEnableKeralaMask(!enableKeralaMask)} 
+                     className="btn" 
+                     style={{ padding: '4px 8px', fontSize: '0.75rem', border: '1px solid var(--border-light)' }}
+                   >
+                     {enableKeralaMask ? '🛡️ Kerala Focus: ON' : '🌐 Regional View'}
+                   </button>
+                   <label className="flex items-center gap-2 cursor-pointer font-bold" style={{ fontSize: '0.85rem' }}>
+                     <input 
+                       type="checkbox" 
+                       checked={showFloodHazardLayer} 
+                       onChange={(e) => setShowFloodHazardLayer(e.target.checked)} 
+                     />
+                     <span>🌊 Show AI Flood Hazard Districts</span>
+                   </label>
+                   <button onClick={() => setActiveView('FLOOD_AI')} className="btn" style={{ padding: '4px 10px', fontSize: '0.8rem', border: '1px solid var(--border-light)' }}>
+                     Open Full Predictor &rarr;
+                   </button>
+                 </div>
+               </div>
+             )}
+
+             <div style={isFullscreenMap ? { flex: 1, position: 'relative', width: '100%', height: '100%', overflow: 'hidden' } : { flex: 1, borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)', minHeight: '75vh', position: 'relative' }}>
                 <MapContainer 
                   center={KERALA_CENTER} 
                   zoom={8} 
@@ -756,11 +881,25 @@ export default function Dashboard({ onLogout }) {
                   maxBoundsViscosity={1.0}
                   style={{ height: '100%', width: '100%' }}
                 >
+                  <MapResizeController isFullscreen={isFullscreenMap} />
                   <TileLayer
-                    attribution='&copy; Google'
+                    attribution='&copy; Google Satellite'
                     url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
                     maxZoom={22}
                   />
+
+                  {/* Kerala-Only Inverted Mask */}
+                  {enableKeralaMask && (
+                    <Polygon
+                      positions={keralaMaskPositions}
+                      pathOptions={{
+                        fillColor: '#020617',
+                        fillOpacity: 0.88,
+                        color: '#38bdf8',
+                        weight: 2.5
+                      }}
+                    />
+                  )}
 
                   {/* Active SOS Citizen Markers */}
                   {sosList.filter(s => s.status === 'ACTIVE').map(sos => (
@@ -781,23 +920,23 @@ export default function Dashboard({ onLogout }) {
                   {showFloodHazardLayer && (
                     <>
                       {/* Idukki - Extreme Red Alert */}
-                      <Circle center={[9.8494, 76.9720]} radius={24000} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 2, dashArray: '4, 4' }}>
+                      <Circle center={[9.8494, 76.9720]} radius={24000} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.35, weight: 2.5, dashArray: '4, 4' }}>
                         <Popup><strong>🔴 Idukki District</strong><br/>AI Flood Probability: 88.5%<br/>Periyar Basin Inundation</Popup>
                       </Circle>
                       {/* Wayanad - Extreme Red Alert */}
-                      <Circle center={[11.6854, 76.1320]} radius={22000} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 2, dashArray: '4, 4' }}>
+                      <Circle center={[11.6854, 76.1320]} radius={22000} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.35, weight: 2.5, dashArray: '4, 4' }}>
                         <Popup><strong>🔴 Wayanad District</strong><br/>AI Flood Probability: 91.2%<br/>Kabini Basin Flash Surge</Popup>
                       </Circle>
                       {/* Pathanamthitta - Red Alert */}
-                      <Circle center={[9.2648, 76.7870]} radius={20000} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 2, dashArray: '4, 4' }}>
+                      <Circle center={[9.2648, 76.7870]} radius={20000} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.35, weight: 2.5, dashArray: '4, 4' }}>
                         <Popup><strong>🔴 Pathanamthitta District</strong><br/>AI Flood Probability: 84.0%<br/>Pamba Basin Inundation</Popup>
                       </Circle>
                       {/* Alappuzha - High Orange Alert */}
-                      <Circle center={[9.4981, 76.3388]} radius={18000} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.2, weight: 1.5 }}>
+                      <Circle center={[9.4981, 76.3388]} radius={18000} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.25, weight: 2 }}>
                         <Popup><strong>🟠 Alappuzha District</strong><br/>AI Flood Probability: 72.4%<br/>Kuttanad Delta Waterlogging</Popup>
                       </Circle>
                       {/* Ernakulam - High Orange Alert */}
-                      <Circle center={[9.9816, 76.2999]} radius={18000} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.2, weight: 1.5 }}>
+                      <Circle center={[9.9816, 76.2999]} radius={18000} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.25, weight: 2 }}>
                         <Popup><strong>🟠 Ernakulam District</strong><br/>AI Flood Probability: 68.5%<br/>Lower Periyar Outflow</Popup>
                       </Circle>
                     </>

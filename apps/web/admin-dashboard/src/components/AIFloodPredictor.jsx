@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Waves, Droplets, CloudRain, TrendingUp, TrendingDown, Gauge, BrainCircuit, 
   CheckCircle2, AlertTriangle, ChevronRight, Sliders, Database, 
   Sparkles, Layers, ShieldAlert, Send, FileDown, RadioTower, ArrowUpRight,
   Map as MapIcon, ZoomIn, Info, Eye, Clock, Calendar, RefreshCw, AlertOctagon,
-  FileSpreadsheet, ShieldCheck, Mountain, Search, Filter, Check
+  FileSpreadsheet, ShieldCheck, Mountain, Search, Filter, Check,
+  Maximize2, Minimize2, EyeOff, Compass, Crosshair, MapPin
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polygon, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { API_BASE_URL } from '../config';
+import keralaDistrictsGeoJson from '../data/kerala_districts.json';
+import keralaMaskPositions from '../data/kerala_mask.json';
 
 // Fix for default leaflet icons not showing in React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -309,6 +312,54 @@ const createDamMarkerIcon = (name) => {
   });
 };
 
+const createJurisdictionMarkerIcon = (label) => {
+  return L.divIcon({
+    className: 'jurisdiction-marker',
+    html: `
+      <div style="
+        background: rgba(15, 23, 42, 0.85);
+        color: #94a3b8;
+        border: 1px dashed #475569;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-family: system-ui, sans-serif;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        pointer-events: none;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      ">
+        ${label}
+      </div>
+    `,
+    iconSize: [180, 22],
+    iconAnchor: [90, 11]
+  });
+};
+
+const JURISDICTION_MARKERS = [
+  { coords: [10.55, 77.65], label: "⚠️ TAMIL NADU (Outside KSDMA Jurisdiction)" },
+  { coords: [12.25, 76.25], label: "⚠️ KARNATAKA (Outside KSDMA Jurisdiction)" },
+  { coords: [9.35, 75.75], label: "🌊 ARABIAN SEA (State Coastal Edge)" }
+];
+
+function MapResizeController({ isFullscreen, targetCoords }) {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+      if (targetCoords) {
+        map.setView(targetCoords, 9.5, { animate: true });
+      } else {
+        map.fitBounds(KERALA_BOUNDS, { padding: [25, 25], animate: true });
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [isFullscreen, targetCoords, map]);
+  return null;
+}
+
 export default function AIFloodPredictor() {
   // Navigation & View State
   const [activeTab, setActiveTab] = useState('MAP'); // MAP, DISTRICTS, SIMULATOR, ALERTS, METRICS, PREDICTIONS
@@ -316,7 +367,11 @@ export default function AIFloodPredictor() {
   const [selectedDistrictId, setSelectedDistrictId] = useState('IDU');
   const [searchTerm, setSearchTerm] = useState('');
   const [riskFilter, setRiskFilter] = useState('ALL'); // ALL, CRITICAL, HIGH, MODERATE, LOW
-  const [mapLayer, setMapLayer] = useState('HYBRID'); // HYBRID or OSM
+  const [mapLayer, setMapLayer] = useState('HYBRID'); // HYBRID, OSM, or DARK
+  const [isFullscreenMap, setIsFullscreenMap] = useState(false);
+  const [enableKeralaMask, setEnableKeralaMask] = useState(true);
+  const [panTargetCoords, setPanTargetCoords] = useState(null);
+  const geoJsonRef = useRef(null);
   
   // Real-time API Data State
   const [districtsData, setDistrictsData] = useState(DEFAULT_DISTRICTS_FALLBACK);
@@ -349,6 +404,81 @@ export default function AIFloodPredictor() {
   const selectedDistrict = useMemo(() => {
     return districtsData.find(d => d.id === selectedDistrictId) || districtsData[0];
   }, [districtsData, selectedDistrictId]);
+
+  // Handle Escape key to exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsFullscreenMap(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // District GeoJSON styling & interactive handlers
+  const getDistrictStyle = (feature) => {
+    const districtName = feature.properties.DISTRICT || feature.properties.name;
+    const d = districtsData.find(item => item.name.toLowerCase() === districtName.toLowerCase());
+    const risk = d ? d.risk_category : 'LOW';
+    const color = getRiskColor(risk);
+    const isSelected = d && d.id === selectedDistrictId;
+
+    return {
+      fillColor: color,
+      fillOpacity: isSelected ? 0.65 : (risk === 'CRITICAL' ? 0.52 : (risk === 'HIGH' ? 0.40 : (risk === 'MODERATE' ? 0.30 : 0.18))),
+      color: isSelected ? '#ffffff' : color,
+      weight: isSelected ? 3.5 : 2,
+      dashArray: risk === 'CRITICAL' ? '4, 4' : null
+    };
+  };
+
+  const onEachDistrictFeature = (feature, layer) => {
+    const districtName = feature.properties.DISTRICT || feature.properties.name;
+    const d = districtsData.find(item => item.name.toLowerCase() === districtName.toLowerCase());
+    if (!d) return;
+
+    const color = getRiskColor(d.risk_category);
+
+    layer.on({
+      mouseover: (e) => {
+        const l = e.target;
+        l.setStyle({
+          weight: 4,
+          color: '#ffffff',
+          fillOpacity: 0.75
+        });
+        l.bringToFront();
+      },
+      mouseout: (e) => {
+        const l = e.target;
+        const isSelected = d.id === selectedDistrictId;
+        l.setStyle({
+          fillColor: color,
+          fillOpacity: isSelected ? 0.65 : (d.risk_category === 'CRITICAL' ? 0.52 : (d.risk_category === 'HIGH' ? 0.40 : (d.risk_category === 'MODERATE' ? 0.30 : 0.18))),
+          color: isSelected ? '#ffffff' : color,
+          weight: isSelected ? 3.5 : 2,
+          dashArray: d.risk_category === 'CRITICAL' ? '4, 4' : null
+        });
+      },
+      click: () => {
+        setSelectedDistrictId(d.id);
+        setPanTargetCoords(d.coords);
+      }
+    });
+
+    layer.bindTooltip(`
+      <div style="font-family: inherit; font-size: 11px; padding: 2px;">
+        <div style="font-weight: 700; color: #0f172a; display: flex; justify-content: space-between; gap: 8px;">
+          <span>${d.name} District</span>
+          <span style="background: ${color}; color: #fff; padding: 1px 5px; border-radius: 4px; font-size: 9px;">${d.risk_category}</span>
+        </div>
+        <div style="color: #475569; font-size: 10px; margin-top: 2px;">
+          Probability: <strong>${d.probability_pct}%</strong> • Crest: <strong>${d.hours_to_crest ? `${d.hours_to_crest}h` : 'None'}</strong>
+        </div>
+      </div>
+    `, { sticky: true, opacity: 0.95 });
+  };
 
   // Fetch real-time telemetry and risk map from backend/FastAPI
   const fetchRiskMapData = async () => {
@@ -676,35 +806,239 @@ export default function AIFloodPredictor() {
 
       {/* TAB 1: KERALA GIS FLOOD RISK MAP */}
       {activeTab === 'MAP' && (
-        <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div className="flex justify-between items-center flex-wrap gap-3">
-            <div className="flex items-center gap-2">
-              <MapIcon size={20} color="var(--primary)" />
-              <h3 style={{ margin: 0, fontSize: '1.15rem' }}>
-                Kerala Statewide Flood Hazard Map ({predictionHorizon.toUpperCase()} Forecast Horizon)
-              </h3>
-            </div>
+        <div 
+          className={isFullscreenMap ? "" : "glass-panel"} 
+          style={isFullscreenMap ? {
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 99999,
+            background: '#020617',
+            display: 'flex',
+            flexDirection: 'column',
+            margin: 0,
+            padding: 0
+          } : {
+            padding: '1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem'
+          }}
+        >
+          {/* Header Controls (Dynamic for Fullscreen vs Normal Card) */}
+          {isFullscreenMap ? (
+            <div style={{
+              background: 'rgba(15, 23, 42, 0.96)',
+              backdropFilter: 'blur(10px)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+              padding: '0.75rem 1.25rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+              zIndex: 1000
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 10px #ef4444' }} />
+                <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#f8fafc', letterSpacing: '0.5px' }}>
+                  KERALA STATEWIDE FLOOD HAZARD MAP — FULLSCREEN COMMAND
+                </span>
+                <span style={{ background: '#0284c7', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 'bold' }}>
+                  {predictionHorizon.toUpperCase()} FORECAST
+                </span>
+                {enableKeralaMask && (
+                  <span style={{ background: '#10b981', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 'bold' }}>
+                    🛡️ KERALA FOCUS MASK
+                  </span>
+                )}
+              </div>
 
-            {/* Map Legend & Layer Controls */}
-            <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: '0.8rem' }}>
-              <span className="flex items-center gap-1 font-bold" style={{ color: '#ef4444' }}>🔴 CRITICAL (&ge;80%)</span>
-              <span className="flex items-center gap-1 font-bold" style={{ color: '#f97316' }}>🟠 HIGH (55-80%)</span>
-              <span className="flex items-center gap-1 font-bold" style={{ color: '#eab308' }}>🟡 MODERATE (25-55%)</span>
-              <span className="flex items-center gap-1 font-bold" style={{ color: '#10b981' }}>🟢 LOW (&lt;25%)</span>
-              <span className="badge" style={{ background: '#0284c7', color: 'white', fontSize: '0.72rem' }}>💧 Dam Location</span>
-              
-              <button 
-                onClick={() => setMapLayer(mapLayer === 'HYBRID' ? 'OSM' : 'HYBRID')} 
-                className="btn" 
-                style={{ padding: '3px 8px', fontSize: '0.75rem', border: '1px solid var(--border-light)' }}
-              >
-                Layer: {mapLayer === 'HYBRID' ? '🛰️ Satellite Hybrid' : '🗺️ Street Map'}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {/* Horizon Switcher */}
+                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.08)', borderRadius: '6px', padding: '2px' }}>
+                  <button
+                    onClick={() => setPredictionHorizon('6h')}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      background: predictionHorizon === '6h' ? 'var(--primary)' : 'transparent',
+                      color: 'white'
+                    }}
+                  >
+                    6H
+                  </button>
+                  <button
+                    onClick={() => setPredictionHorizon('24h')}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      background: predictionHorizon === '24h' ? 'var(--primary)' : 'transparent',
+                      color: 'white'
+                    }}
+                  >
+                    24H
+                  </button>
+                </div>
+
+                {/* Kerala Focus Mask Toggle */}
+                <button
+                  onClick={() => setEnableKeralaMask(!enableKeralaMask)}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    background: enableKeralaMask ? 'rgba(2, 132, 199, 0.35)' : 'rgba(255,255,255,0.08)',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Toggle Kerala Boundary Isolation Mask"
+                >
+                  {enableKeralaMask ? <Eye size={13} /> : <EyeOff size={13} />}
+                  {enableKeralaMask ? 'Kerala Isolated' : 'Regional View'}
+                </button>
+
+                {/* Map Layer Switcher */}
+                <button
+                  onClick={() => setMapLayer(mapLayer === 'HYBRID' ? 'DARK' : (mapLayer === 'DARK' ? 'OSM' : 'HYBRID'))}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    background: 'rgba(255,255,255,0.08)',
+                    color: 'white'
+                  }}
+                >
+                  Layer: {mapLayer === 'HYBRID' ? '🛰️ Satellite' : (mapLayer === 'DARK' ? '🌑 Dark' : '🗺️ Streets')}
+                </button>
+
+                {/* District Jump Dropdown */}
+                <select
+                  value={selectedDistrictId}
+                  onChange={(e) => {
+                    setSelectedDistrictId(e.target.value);
+                    const match = districtsData.find(d => d.id === e.target.value);
+                    if (match) setPanTargetCoords(match.coords);
+                  }}
+                  style={{
+                    padding: '5px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    background: '#0f172a',
+                    color: 'white',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {districtsData.map(d => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} ({d.risk_category} - {d.probability_pct}%)
+                    </option>
+                  ))}
+                </select>
+
+                {/* Exit Fullscreen Button */}
+                <button
+                  onClick={() => setIsFullscreenMap(false)}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: '0.78rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Minimize2 size={14} /> Exit Fullscreen [Esc]
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex justify-between items-center flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <MapIcon size={20} color="var(--primary)" />
+                <h3 style={{ margin: 0, fontSize: '1.15rem' }}>
+                  Kerala Statewide Flood Hazard Map ({predictionHorizon.toUpperCase()} Forecast Horizon)
+                </h3>
+              </div>
+
+              {/* Map Legend & Layer Controls */}
+              <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: '0.8rem' }}>
+                <span className="flex items-center gap-1 font-bold" style={{ color: '#ef4444' }}>🔴 CRITICAL (&ge;80%)</span>
+                <span className="flex items-center gap-1 font-bold" style={{ color: '#f97316' }}>🟠 HIGH (55-80%)</span>
+                <span className="flex items-center gap-1 font-bold" style={{ color: '#eab308' }}>🟡 MOD (25-55%)</span>
+                <span className="flex items-center gap-1 font-bold" style={{ color: '#10b981' }}>🟢 LOW (&lt;25%)</span>
+                
+                {/* Fullscreen Button */}
+                <button 
+                  onClick={() => setIsFullscreenMap(true)} 
+                  className="btn btn-primary" 
+                  style={{ padding: '4px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '5px' }}
+                  title="Expand Map to Fullscreen"
+                >
+                  <Maximize2 size={14} /> Fullscreen Map
+                </button>
+
+                {/* Kerala Focus Mask Toggle */}
+                <button 
+                  onClick={() => setEnableKeralaMask(!enableKeralaMask)} 
+                  className="btn" 
+                  style={{ padding: '4px 8px', fontSize: '0.75rem', border: '1px solid var(--border-light)' }}
+                  title="Toggle Kerala-Only Boundary Mask"
+                >
+                  {enableKeralaMask ? '🛡️ Kerala Focus: ON' : '🌐 Regional View'}
+                </button>
+
+                {/* Layer Switcher */}
+                <button 
+                  onClick={() => setMapLayer(mapLayer === 'HYBRID' ? 'DARK' : (mapLayer === 'DARK' ? 'OSM' : 'HYBRID'))} 
+                  className="btn" 
+                  style={{ padding: '4px 8px', fontSize: '0.75rem', border: '1px solid var(--border-light)' }}
+                >
+                  Layer: {mapLayer === 'HYBRID' ? '🛰️ Satellite' : (mapLayer === 'DARK' ? '🌑 Dark' : '🗺️ Streets')}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Leaflet Map (Locked strictly to Kerala state bounds) */}
-          <div style={{ height: '68vh', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-light)', position: 'relative' }}>
+          <div style={isFullscreenMap ? {
+            flex: 1,
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            overflow: 'hidden'
+          } : {
+            height: '68vh',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            border: '1px solid var(--border-light)',
+            position: 'relative'
+          }}>
             <MapContainer 
               center={KERALA_CENTER} 
               zoom={8} 
@@ -714,11 +1048,20 @@ export default function AIFloodPredictor() {
               maxBoundsViscosity={1.0}
               style={{ height: '100%', width: '100%' }}
             >
+              <MapResizeController isFullscreen={isFullscreenMap} targetCoords={panTargetCoords} />
+
+              {/* Base Tile Layer */}
               {mapLayer === 'HYBRID' ? (
                 <TileLayer
                   attribution='&copy; Google Maps Satellite'
                   url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
                   maxZoom={20}
+                />
+              ) : mapLayer === 'DARK' ? (
+                <TileLayer
+                  attribution='&copy; CartoDB Dark Matter'
+                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  maxZoom={19}
                 />
               ) : (
                 <TileLayer
@@ -727,10 +1070,37 @@ export default function AIFloodPredictor() {
                 />
               )}
 
-              {/* Render Flood Risk Buffer Circles for all 14 districts */}
+              {/* 1. Kerala-Only Inverted Mask (Hides Tamil Nadu, Karnataka & Ocean, illuminating Kerala) */}
+              {enableKeralaMask && (
+                <Polygon
+                  positions={keralaMaskPositions}
+                  pathOptions={{
+                    fillColor: '#020617',
+                    fillOpacity: 0.88,
+                    color: '#38bdf8',
+                    weight: 2.5
+                  }}
+                />
+              )}
+
+              {/* 2. Official 14-District GeoJSON Boundaries with Flood Risk Shading */}
+              <GeoJSON
+                key={`kerala-districts-${predictionHorizon}-${selectedDistrictId}`}
+                data={keralaDistrictsGeoJson}
+                style={getDistrictStyle}
+                onEachFeature={onEachDistrictFeature}
+                ref={geoJsonRef}
+              />
+
+              {/* 3. Outside Jurisdiction Watermarks */}
+              {JURISDICTION_MARKERS.map((jm, idx) => (
+                <Marker key={`jurisdiction-${idx}`} position={jm.coords} icon={createJurisdictionMarkerIcon(jm.label)} />
+              ))}
+
+              {/* 4. Render Flood Risk Buffer Circles for all 14 districts */}
               {districtsData.map(d => {
                 const color = getRiskColor(d.risk_category);
-                const radius = d.risk_category === 'CRITICAL' ? 24000 : (d.risk_category === 'HIGH' ? 18000 : (d.risk_category === 'MODERATE' ? 14000 : 9000));
+                const radius = d.risk_category === 'CRITICAL' ? 22000 : (d.risk_category === 'HIGH' ? 16000 : (d.risk_category === 'MODERATE' ? 12000 : 7000));
                 
                 return (
                   <React.Fragment key={`map-district-${d.id}`}>
@@ -747,6 +1117,7 @@ export default function AIFloodPredictor() {
                       eventHandlers={{
                         click: () => {
                           setSelectedDistrictId(d.id);
+                          setPanTargetCoords(d.coords);
                         }
                       }}
                     />
@@ -758,6 +1129,7 @@ export default function AIFloodPredictor() {
                       eventHandlers={{
                         click: () => {
                           setSelectedDistrictId(d.id);
+                          setPanTargetCoords(d.coords);
                         }
                       }}
                     >
@@ -784,7 +1156,11 @@ export default function AIFloodPredictor() {
                           </div>
 
                           <button 
-                            onClick={() => { setSelectedDistrictId(d.id); setActiveTab('DISTRICTS'); }}
+                            onClick={() => { 
+                              setSelectedDistrictId(d.id); 
+                              if (isFullscreenMap) setIsFullscreenMap(false);
+                              setActiveTab('DISTRICTS'); 
+                            }}
                             style={{ width: '100%', background: '#0f172a', color: 'white', border: 'none', padding: '5px', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}
                           >
                             Inspect Full Telemetry & Directives &rarr;
@@ -796,7 +1172,7 @@ export default function AIFloodPredictor() {
                 );
               })}
 
-              {/* Major Kerala Dams */}
+              {/* 5. Major Kerala Dams */}
               {KERALA_DAMS.map((dam, idx) => (
                 <Marker key={`dam-${idx}`} position={dam.coords} icon={createDamMarkerIcon(dam.name)}>
                   <Popup>
@@ -809,29 +1185,84 @@ export default function AIFloodPredictor() {
                 </Marker>
               ))}
             </MapContainer>
+
+            {/* Floating Fullscreen Telemetry HUD in Corner */}
+            {isFullscreenMap && (
+              <div style={{
+                position: 'absolute',
+                bottom: '16px',
+                right: '16px',
+                zIndex: 1000,
+                background: 'rgba(15, 23, 42, 0.94)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                color: 'white',
+                fontSize: '0.8rem',
+                minWidth: '290px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <strong style={{ fontSize: '0.88rem', color: '#38bdf8' }}>Kerala Flood Summary</strong>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>KSDMA + IMD</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', textAlign: 'center', marginBottom: '10px' }}>
+                  <div style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', borderRadius: '6px', padding: '4px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#ef4444', fontSize: '1rem' }}>
+                      {districtsData.filter(d => d.risk_category === 'CRITICAL').length}
+                    </div>
+                    <div style={{ fontSize: '0.62rem' }}>CRITICAL</div>
+                  </div>
+                  <div style={{ background: 'rgba(249, 115, 22, 0.2)', border: '1px solid #f97316', borderRadius: '6px', padding: '4px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#f97316', fontSize: '1rem' }}>
+                      {districtsData.filter(d => d.risk_category === 'HIGH').length}
+                    </div>
+                    <div style={{ fontSize: '0.62rem' }}>HIGH</div>
+                  </div>
+                  <div style={{ background: 'rgba(234, 179, 8, 0.2)', border: '1px solid #eab308', borderRadius: '6px', padding: '4px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#eab308', fontSize: '1rem' }}>
+                      {districtsData.filter(d => d.risk_category === 'MODERATE').length}
+                    </div>
+                    <div style={{ fontSize: '0.62rem' }}>MOD</div>
+                  </div>
+                  <div style={{ background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10b981', borderRadius: '6px', padding: '4px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#10b981', fontSize: '1rem' }}>
+                      {districtsData.filter(d => d.risk_category === 'LOW').length}
+                    </div>
+                    <div style={{ fontSize: '0.62rem' }}>LOW</div>
+                  </div>
+                </div>
+                <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '6px', fontSize: '0.75rem', color: '#cbd5e1' }}>
+                  Inspecting: <strong style={{ color: getRiskColor(selectedDistrict.risk_category) }}>{selectedDistrict.name}</strong> ({selectedDistrict.probability_pct}%) • Crest: <strong>{selectedDistrict.hours_to_crest ? `${selectedDistrict.hours_to_crest}h` : 'None'}</strong>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Quick Selection Status Strip */}
-          <div className="flex justify-between items-center flex-wrap gap-3" style={{ background: 'rgba(45, 52, 54, 0.03)', padding: '0.75rem 1.25rem', borderRadius: '8px' }}>
-            <div className="flex items-center gap-2">
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Inspecting District:</span>
-              <strong style={{ fontSize: '1rem', color: getRiskColor(selectedDistrict.risk_category) }}>
-                {selectedDistrict.name} — {selectedDistrict.risk_category} RISK ({selectedDistrict.probability_pct}%)
-              </strong>
-            </div>
+          {/* Quick Selection Status Strip (Only in Normal View) */}
+          {!isFullscreenMap && (
+            <div className="flex justify-between items-center flex-wrap gap-3" style={{ background: 'rgba(45, 52, 54, 0.03)', padding: '0.75rem 1.25rem', borderRadius: '8px' }}>
+              <div className="flex items-center gap-2">
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Inspecting District:</span>
+                <strong style={{ fontSize: '1rem', color: getRiskColor(selectedDistrict.risk_category) }}>
+                  {selectedDistrict.name} — {selectedDistrict.risk_category} RISK ({selectedDistrict.probability_pct}%)
+                </strong>
+              </div>
 
-            <div className="flex gap-2">
-              <button onClick={() => setActiveTab('DISTRICTS')} className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '4px 10px' }}>
-                <Eye size={13} /> View Catchment Telemetry
-              </button>
-              <button onClick={() => setActiveTab('SIMULATOR')} className="btn" style={{ fontSize: '0.8rem', padding: '4px 10px', border: '1px solid var(--border-light)' }}>
-                <Sliders size={13} /> Test What-If Scenarios
-              </button>
-              <button onClick={() => setActiveTab('ALERTS')} className="btn" style={{ fontSize: '0.8rem', padding: '4px 10px', background: '#ef4444', color: 'white' }}>
-                <Send size={13} /> Dispatch Directive
-              </button>
+              <div className="flex gap-2">
+                <button onClick={() => setActiveTab('DISTRICTS')} className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '4px 10px' }}>
+                  <Eye size={13} /> View Catchment Telemetry
+                </button>
+                <button onClick={() => setActiveTab('SIMULATOR')} className="btn" style={{ fontSize: '0.8rem', padding: '4px 10px', border: '1px solid var(--border-light)' }}>
+                  <Sliders size={13} /> Test What-If Scenarios
+                </button>
+                <button onClick={() => setActiveTab('ALERTS')} className="btn" style={{ fontSize: '0.8rem', padding: '4px 10px', background: '#ef4444', color: 'white' }}>
+                  <Send size={13} /> Dispatch Directive
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
