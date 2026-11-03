@@ -197,6 +197,7 @@ export default function Dashboard({ onLogout }) {
   const [noticeForm, setNoticeForm] = useState({ target: 'ALL_DISTRICTS', type: 'TEXT', content: '' });
   const [isRecording, setIsRecording] = useState(false);
   const [recordedAudio, setRecordedAudio] = useState(null);
+  const [showFloodHazardLayer, setShowFloodHazardLayer] = useState(true);
 
   const toggleRecord = (e) => {
     e.preventDefault();
@@ -720,11 +721,25 @@ export default function Dashboard({ onLogout }) {
         {/* 6. GIS Live Heatmap */}
         {activeView === 'GIS' && (
            <div className="glass-panel" style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column' }}>
-             <div className="flex justify-between items-center" style={{ marginBottom: '1rem' }}>
+             <div className="flex justify-between items-center flex-wrap gap-2" style={{ marginBottom: '1rem' }}>
                <h3 className="flex items-center gap-2 text-gradient" style={{ margin: 0 }}>
                  <MapIcon size={20}/> GIS Live Kerala Heatmap
                </h3>
-               <span className="badge badge-primary font-bold">Google Satellite Hybrid</span>
+               
+               <div className="flex items-center gap-3">
+                 <label className="flex items-center gap-2 cursor-pointer font-bold" style={{ fontSize: '0.85rem' }}>
+                   <input 
+                     type="checkbox" 
+                     checked={showFloodHazardLayer} 
+                     onChange={(e) => setShowFloodHazardLayer(e.target.checked)} 
+                   />
+                   <span>🌊 Show AI Flood Hazard Districts</span>
+                 </label>
+                 <button onClick={() => setActiveView('FLOOD_AI')} className="btn" style={{ padding: '4px 10px', fontSize: '0.8rem', border: '1px solid var(--border-light)' }}>
+                   Open Full Predictor &rarr;
+                 </button>
+                 <span className="badge badge-primary font-bold">Google Satellite Hybrid</span>
+               </div>
              </div>
 
              <div style={{ flex: 1, borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)', minHeight: '75vh', position: 'relative' }}>
@@ -735,6 +750,7 @@ export default function Dashboard({ onLogout }) {
                     maxZoom={22}
                   />
 
+                  {/* Active SOS Citizen Markers */}
                   {sosList.filter(s => s.status === 'ACTIVE').map(sos => (
                     sos.lat && <Marker key={sos.id} position={[sos.lat, sos.lng]}>
                       <Popup>
@@ -748,6 +764,32 @@ export default function Dashboard({ onLogout }) {
                   {sosList.filter(s => s.status === 'ACTIVE').map(sos => (
                     sos.lat && <Circle key={`c-${sos.id}`} center={[sos.lat, sos.lng]} pathOptions={{ color: 'red', fillColor: 'red' }} radius={5000} />
                   ))}
+
+                  {/* AI Flood High-Risk Inundation Overlays */}
+                  {showFloodHazardLayer && (
+                    <>
+                      {/* Idukki - Extreme Red Alert */}
+                      <Circle center={[9.8494, 76.9720]} radius={24000} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 2, dashArray: '4, 4' }}>
+                        <Popup><strong>🔴 Idukki District</strong><br/>AI Flood Probability: 88.5%<br/>Periyar Basin Inundation</Popup>
+                      </Circle>
+                      {/* Wayanad - Extreme Red Alert */}
+                      <Circle center={[11.6854, 76.1320]} radius={22000} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 2, dashArray: '4, 4' }}>
+                        <Popup><strong>🔴 Wayanad District</strong><br/>AI Flood Probability: 91.2%<br/>Kabini Basin Flash Surge</Popup>
+                      </Circle>
+                      {/* Pathanamthitta - Red Alert */}
+                      <Circle center={[9.2648, 76.7870]} radius={20000} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 2, dashArray: '4, 4' }}>
+                        <Popup><strong>🔴 Pathanamthitta District</strong><br/>AI Flood Probability: 84.0%<br/>Pamba Basin Inundation</Popup>
+                      </Circle>
+                      {/* Alappuzha - High Orange Alert */}
+                      <Circle center={[9.4981, 76.3388]} radius={18000} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.2, weight: 1.5 }}>
+                        <Popup><strong>🟠 Alappuzha District</strong><br/>AI Flood Probability: 72.4%<br/>Kuttanad Delta Waterlogging</Popup>
+                      </Circle>
+                      {/* Ernakulam - High Orange Alert */}
+                      <Circle center={[9.9816, 76.2999]} radius={18000} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.2, weight: 1.5 }}>
+                        <Popup><strong>🟠 Ernakulam District</strong><br/>AI Flood Probability: 68.5%<br/>Lower Periyar Outflow</Popup>
+                      </Circle>
+                    </>
+                  )}
                 </MapContainer>
              </div>
            </div>
