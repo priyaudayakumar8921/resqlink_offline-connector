@@ -23,8 +23,12 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Kerala Center Coordinates
-const KERALA_CENTER = [10.8505, 76.2711];
+// Kerala Center Coordinates & Strict Bounding Box (Kerala-Only View)
+const KERALA_CENTER = [10.4505, 76.3711];
+const KERALA_BOUNDS = [
+  [8.15, 74.80], // Southwest coordinate
+  [12.85, 77.55] // Northeast coordinate
+];
 
 // Specification Metadata for Less Important / Upcoming Modules
 const COMING_SOON_DATA = {
@@ -743,7 +747,15 @@ export default function Dashboard({ onLogout }) {
              </div>
 
              <div style={{ flex: 1, borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)', minHeight: '75vh', position: 'relative' }}>
-                <MapContainer center={KERALA_CENTER} zoom={7} style={{ height: '100%', width: '100%' }}>
+                <MapContainer 
+                  center={KERALA_CENTER} 
+                  zoom={8} 
+                  minZoom={7.5}
+                  maxZoom={18}
+                  maxBounds={KERALA_BOUNDS}
+                  maxBoundsViscosity={1.0}
+                  style={{ height: '100%', width: '100%' }}
+                >
                   <TileLayer
                     attribution='&copy; Google'
                     url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"

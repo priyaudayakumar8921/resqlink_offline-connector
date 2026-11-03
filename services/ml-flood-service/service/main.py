@@ -324,7 +324,7 @@ def predict_flood(payload: PredictionRequest):
     }
 
 @app.get("/risk-map")
-def get_risk_map(horizon: str = Query("24h", regex="^(6h|24h)$")):
+def get_risk_map(horizon: str = Query("24h", pattern="^(6h|24h)$")):
     """Generates statewide Kerala flood risk map payload covering all 14 districts."""
     districts_output = []
     critical_count = 0
@@ -433,3 +433,4 @@ def dispatch_flood_alert(alert: AlertDispatchRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+

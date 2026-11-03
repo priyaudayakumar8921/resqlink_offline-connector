@@ -18,8 +18,12 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Kerala Center Coordinates
+// Kerala Center Coordinates & Strict Bounding Box (Kerala-Only View)
 const KERALA_CENTER = [10.4505, 76.3711];
+const KERALA_BOUNDS = [
+  [8.15, 74.80], // Southwest coordinate (south of Parassala)
+  [12.85, 77.55] // Northeast coordinate (north of Kasaragod)
+];
 
 // Major Dams in Kerala with Telemetry Capacity
 const KERALA_DAMS = [
@@ -699,9 +703,17 @@ export default function AIFloodPredictor() {
             </div>
           </div>
 
-          {/* Leaflet Map */}
+          {/* Leaflet Map (Locked strictly to Kerala state bounds) */}
           <div style={{ height: '68vh', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-light)', position: 'relative' }}>
-            <MapContainer center={KERALA_CENTER} zoom={8} style={{ height: '100%', width: '100%' }}>
+            <MapContainer 
+              center={KERALA_CENTER} 
+              zoom={8} 
+              minZoom={7.5}
+              maxZoom={18}
+              maxBounds={KERALA_BOUNDS}
+              maxBoundsViscosity={1.0}
+              style={{ height: '100%', width: '100%' }}
+            >
               {mapLayer === 'HYBRID' ? (
                 <TileLayer
                   attribution='&copy; Google Maps Satellite'

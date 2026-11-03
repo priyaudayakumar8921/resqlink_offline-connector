@@ -1,0 +1,13 @@
+{
+  "name": "resqlink-monorepo",
+  "version": "2.4.0",
+  "private": true,
+  "description": "ResQLink: AI-Powered Offline Disaster SOS & Command Network",
+  "scripts": {
+    "build": "npm --prefix apps/web/admin-dashboard install && npm --prefix apps/web/admin-dashboard run build",
+    "web": "npm --prefix apps/web/admin-dashboard run dev",
+    "web:build": "npm --prefix apps/web/admin-dashboard run build",
+    "hub": "node services/hub-server/server.js",
+    "ml": "python -m uvicorn main:app --app-dir services/ml-flood-service/service --host 127.0.0.1 --port 8000 --reload"
+  }
+}

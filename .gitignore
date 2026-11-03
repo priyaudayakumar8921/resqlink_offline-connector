@@ -1,14 +1,35 @@
+# Dependency & Environment files
 node_modules/
 .env
 .env.local
+.env.*.local
 .DS_Store
+
+# Build Outputs
 dist/
 build/
 coverage/
+*.apk
+*.aab
 *.log
-gradle.zip
-gradle-8.2.1/
+
+# Python Cache & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Android & Gradle
 .gradle/
 *.jar
+apps/mobile/.gradle/
+apps/mobile/local.properties
+apps/mobile/app/build/
+apps/mobile/wear/build/
+apps/mobile/app/src/main/assets/model-en/
 app/build/
 app/src/main/assets/model-en/
+gradle.zip
+gradle-8.2.1/
