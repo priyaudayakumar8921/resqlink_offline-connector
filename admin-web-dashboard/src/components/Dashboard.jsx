@@ -264,28 +264,28 @@ export default function Dashboard({ onLogout, role = 'SUPERADMIN' }) {
           </span>
         </div>
 
-        {/* Quick Portal Switcher: Superadmin, Admin, Subadmin */}
+        {/* Quick Portal Switcher: Superadmin, District Admin, Subadmin */}
         <div className="flex gap-1" style={{ background: 'rgba(0,0,0,0.35)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
           <Link 
             to="/superadmin" 
-            className={`badge ${role === 'SUPERADMIN' ? 'badge-primary font-bold' : ''}`}
-            style={{ textDecoration: 'none', cursor: 'pointer', padding: '4px 10px', color: role === 'SUPERADMIN' ? 'white' : 'var(--text-muted)' }}
+            className="badge"
+            style={{ textDecoration: 'none', cursor: 'pointer', padding: '4px 10px', color: 'var(--text-muted)' }}
           >
-            👑 Superadmin
+            👑 Superadmin (KSDMA)
           </Link>
           <Link 
             to="/admin" 
-            className={`badge ${role === 'ADMIN' ? 'badge-primary font-bold' : ''}`}
-            style={{ textDecoration: 'none', cursor: 'pointer', padding: '4px 10px', color: role === 'ADMIN' ? 'white' : 'var(--text-muted)' }}
+            className="badge"
+            style={{ textDecoration: 'none', cursor: 'pointer', padding: '4px 10px', color: 'var(--text-muted)' }}
           >
-            🛡️ Admin
+            🏛️ District Admin (DDMA)
           </Link>
           <Link 
             to="/subadmin" 
-            className={`badge ${role === 'SUBADMIN' ? 'badge-primary font-bold' : ''}`}
-            style={{ textDecoration: 'none', cursor: 'pointer', padding: '4px 10px', color: role === 'SUBADMIN' ? 'white' : 'var(--text-muted)' }}
+            className="badge badge-primary font-bold"
+            style={{ textDecoration: 'none', cursor: 'pointer', padding: '4px 10px', color: 'white' }}
           >
-            🛰️ Subadmin
+            🛰️ Sub-Admin (Station Hub & Excel)
           </Link>
         </div>
 

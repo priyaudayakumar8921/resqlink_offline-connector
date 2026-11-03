@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Login from './components/Login';
+import SuperAdminDashboard from './components/SuperAdminDashboard';
+import DistrictAdminDashboard from './components/DistrictAdminDashboard';
 import Dashboard from './components/Dashboard';
 
 function App() {
@@ -21,24 +23,36 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Direct Dedicated Portals for Superadmin, Admin, and Subadmin */}
+        {/* 1. KSDMA State Superadmin Portal */}
         <Route 
           path="/superadmin" 
-          element={<Dashboard role="SUPERADMIN" onLogout={handleLogout} />} 
+          element={<SuperAdminDashboard onLogout={handleLogout} />} 
         />
+        
+        {/* 2. District Collectorate (DDMA) Admin Portal */}
         <Route 
           path="/admin" 
-          element={<Dashboard role="ADMIN" onLogout={handleLogout} />} 
+          element={<DistrictAdminDashboard onLogout={handleLogout} />} 
         />
         <Route 
+          path="/district-admin" 
+          element={<DistrictAdminDashboard onLogout={handleLogout} />} 
+        />
+        
+        {/* 3. Sub-Admin (Station Hub Server & Live Excel Logs) */}
+        <Route 
           path="/subadmin" 
+          element={<Dashboard role="SUBADMIN" onLogout={handleLogout} />} 
+        />
+        <Route 
+          path="/hub" 
           element={<Dashboard role="SUBADMIN" onLogout={handleLogout} />} 
         />
         
         {/* Standard Dashboard Route */}
         <Route 
           path="/dashboard" 
-          element={<Dashboard role="SUPERADMIN" onLogout={handleLogout} />} 
+          element={<SuperAdminDashboard onLogout={handleLogout} />} 
         />
         
         {/* Login Page */}
@@ -47,9 +61,9 @@ function App() {
           element={<Login onLogin={handleLogin} />} 
         />
 
-        {/* Default Landing: Direct to Superadmin Master Portal */}
-        <Route path="/" element={<Navigate to="/superadmin" replace />} />
-        <Route path="*" element={<Navigate to="/superadmin" replace />} />
+        {/* Default Landing */}
+        <Route path="/" element={<SuperAdminDashboard onLogout={handleLogout} />} />
+        <Route path="*" element={<SuperAdminDashboard onLogout={handleLogout} />} />
       </Routes>
     </BrowserRouter>
   );
