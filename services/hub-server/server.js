@@ -615,6 +615,20 @@ app.post('/api/v1/ai/predict', async (req, res) => {
     }
 });
 
+app.post('/api/v1/ai/chat/predict', async (req, res) => {
+    try {
+        const resp = await fetch(`${AI_SERVICE_URL}/chat/predict`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body)
+        });
+        const data = await resp.json();
+        res.status(resp.status).json(data);
+    } catch (err) {
+        res.status(503).json({ error: "JALDRISHTI AI Chatbot microservice unavailable." });
+    }
+});
+
 app.post('/api/v1/ai/alerts/dispatch', async (req, res) => {
     try {
         const resp = await fetch(`${AI_SERVICE_URL}/alerts/dispatch`, {

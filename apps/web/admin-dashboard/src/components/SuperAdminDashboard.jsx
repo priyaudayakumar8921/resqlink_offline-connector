@@ -392,7 +392,7 @@ export default function Dashboard({ onLogout }) {
           </span>
           <div className="flex gap-2">
             <button onClick={() => setActiveView('FLOOD_AI')} className="btn btn-primary" style={{ fontSize: '0.85rem' }}>
-              <Waves size={15} /> Launch AI Flood Predictor
+              <Waves size={15} /> Launch JALDRISHTI AI
             </button>
             <button onClick={() => setActiveView('AI_ROADMAP')} className="btn" style={{ fontSize: '0.85rem', border: '1px solid var(--border-light)' }}>
               <BrainCircuit size={15} /> View Full AI Roadmap
@@ -427,7 +427,7 @@ export default function Dashboard({ onLogout }) {
           <div style={{ padding: '0.75rem 1rem 0.35rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 'bold', letterSpacing: '0.05em' }}>
             AI & PREDICTIVE INTELLIGENCE
           </div>
-          <SidebarButton view="FLOOD_AI" icon={Waves} label="AI Flood Predictor" isLive={true} />
+          <SidebarButton view="FLOOD_AI" icon={Waves} label="JALDRISHTI AI Predictor" isLive={true} />
           <SidebarButton view="AI_ROADMAP" icon={BrainCircuit} label="AI Modules Roadmap" badge="NEW" />
 
           {/* Core Operations Section */}
