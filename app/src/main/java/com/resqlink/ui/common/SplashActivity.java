@@ -16,6 +16,8 @@ public class SplashActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
+        com.resqlink.network.HubDiscoverer.startDiscovery(this);
+        
         SharedPreferences prefs = getSharedPreferences("ResQLinkPrefs", MODE_PRIVATE);
         boolean isCitizenSetup = prefs.getBoolean("is_citizen_setup", false);
         

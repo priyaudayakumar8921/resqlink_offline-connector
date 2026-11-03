@@ -1,0 +1,222 @@
+[
+  {
+    "id": "VOICE-20261103-72187F",
+    "citizenId": "CIT-D3A2AE73",
+    "lat": 9.8164978,
+    "lng": 76.3100205,
+    "timestamp": "2026-11-03T12:13:02",
+    "status": "ACTIVE",
+    "description": "[VOICE_EMERGENCY] why get em iran landslide on healthy you | Location: https://maps.google.com/?q=9.8164978,76.3100205",
+    "emergencyType": "VOICE",
+    "priority": "NORMAL"
+  },
+  {
+    "id": "VOICE-20261103-937F3C",
+    "citizenId": "CIT-D3A2AE73",
+    "lat": 9.8165151,
+    "lng": 76.310032,
+    "timestamp": "2026-11-03T12:12:05",
+    "status": "ACTIVE",
+    "description": "[VOICE_EMERGENCY] heavy rated the landslide help | Location: https://maps.google.com/?q=9.8165151,76.310032",
+    "emergencyType": "VOICE",
+    "priority": "NORMAL"
+  },
+  {
+    "id": "VOICE-20261103-CF8F89",
+    "citizenId": "CIT-D3A2AE73",
+    "lat": 9.8165151,
+    "lng": 76.310032,
+    "timestamp": "2026-11-03T12:11:37",
+    "status": "ACTIVE",
+    "description": "[VOICE_EMERGENCY] the are dying peppers the are dying help us | Location: https://maps.google.com/?q=9.8165151,76.310032",
+    "emergencyType": "VOICE",
+    "priority": "NORMAL"
+  },
+  {
+    "id": "VOICE-20261103-69DCFF",
+    "citizenId": "CIT-D3A2AE73",
+    "lat": 9.8165032,
+    "lng": 76.3100272,
+    "timestamp": "2026-11-03T12:10:56",
+    "status": "ACTIVE",
+    "description": "[VOICE_EMERGENCY] heavy rain with the line slave fast help us rescue | Location: https://maps.google.com/?q=9.8165032,76.3100272",
+    "emergencyType": "VOICE",
+    "priority": "NORMAL"
+  },
+  {
+    "id": "SOS-20261103-9F20F1",
+    "citizenId": "CIT-D3A2AE73",
+    "lat": null,
+    "lng": null,
+    "timestamp": "2026-11-03T11:52:22",
+    "status": "ACTIVE",
+    "description": "No description provided",
+    "emergencyType": "IMPACT/SHAKE",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "SOS-20261103-231373",
+    "citizenId": "CIT-D3A2AE73",
+    "lat": null,
+    "lng": null,
+    "timestamp": "2026-11-03T11:41:12",
+    "status": "ACTIVE",
+    "description": "No description provided",
+    "emergencyType": "IMPACT/SHAKE",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "SOS-20261103-649F85",
+    "citizenId": "CIT-D3A2AE73",
+    "lat": 9.8161227,
+    "lng": 76.3094836,
+    "timestamp": "2026-11-03T11:40:47",
+    "status": "ACTIVE",
+    "description": "No description provided",
+    "emergencyType": "GENERAL",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "VOICE-20261103-5D1B91",
+    "citizenId": "CIT-D3A2AE73",
+    "lat": 9.8179662,
+    "lng": 76.3128902,
+    "timestamp": "2026-11-03T11:38:49",
+    "status": "ACTIVE",
+    "description": "[VOICE_EMERGENCY] hello here's the rain rain hell | Location: https://maps.google.com/?q=9.8179662,76.3128902",
+    "emergencyType": "VOICE",
+    "priority": "NORMAL"
+  },
+  {
+    "id": "SOS-20261103-756C7E",
+    "citizenId": "CIT-D3A2AE73",
+    "lat": 9.8179662,
+    "lng": 76.3128902,
+    "timestamp": "2026-11-03T11:38:38",
+    "status": "ACTIVE",
+    "description": "No description provided",
+    "emergencyType": "IMPACT/SHAKE",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "SOS-20261031-CB973E",
+    "citizenId": "CIT-7633A2FB",
+    "lat": 9.816205,
+    "lng": 76.3096483,
+    "timestamp": "2026-10-31T13:32:20",
+    "status": "ACTIVE",
+    "description": "No description provided",
+    "emergencyType": "GENERAL",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "SOS-20261031-6FB15B",
+    "citizenId": "CIT-7633A2FB",
+    "lat": 9.816423,
+    "lng": 76.3100382,
+    "timestamp": "2026-10-31T12:45:11",
+    "status": "FALSE_ALARM",
+    "description": "No description provided",
+    "emergencyType": "IMPACT/SHAKE",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "SOS-20261031-FBD57C",
+    "citizenId": "CIT-7633A2FB",
+    "lat": 9.8164175,
+    "lng": 76.3100394,
+    "timestamp": "2026-10-31T12:45:01",
+    "status": "FALSE_ALARM",
+    "description": "No description provided",
+    "emergencyType": "GENERAL",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "SOS-20261031-AD5005",
+    "citizenId": "CIT-7633A2FB",
+    "lat": 9.816423,
+    "lng": 76.3100382,
+    "timestamp": "2026-10-31T12:43:56",
+    "status": "RESOLVED",
+    "description": "No description provided",
+    "emergencyType": "GENERAL",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "SOS-20261031-FB6C3B",
+    "citizenId": "CIT-7633A2FB",
+    "lat": null,
+    "lng": null,
+    "timestamp": "2026-10-31T11:48:11",
+    "status": "FALSE_ALARM",
+    "description": "No description provided",
+    "emergencyType": "IMPACT/SHAKE",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "VOICE-20261031-60CA7B",
+    "citizenId": "CIT-7633A2FB",
+    "lat": 9.8160167,
+    "lng": 76.309625,
+    "timestamp": "2026-10-31T11:47:54",
+    "status": "FALSE_ALARM",
+    "description": "[VOICE_EMERGENCY] raining | Location: https://maps.google.com/?q=9.8160167,76.309625",
+    "emergencyType": "GENERAL_HELP",
+    "priority": "NORMAL"
+  },
+  {
+    "id": "SOS-20261031-EF7EDC",
+    "citizenId": "CIT-7633A2FB",
+    "lat": 9.8160189,
+    "lng": 76.309625,
+    "timestamp": "2026-10-31T11:47:04",
+    "status": "FALSE_ALARM",
+    "description": "No description provided",
+    "emergencyType": "IMPACT/SHAKE",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "SOS-20261031-78E7FB",
+    "citizenId": "CIT-7633A2FB",
+    "lat": 9.81291,
+    "lng": 76.31076,
+    "timestamp": "2026-10-31T11:46:02",
+    "status": "FALSE_ALARM",
+    "description": "No description provided",
+    "emergencyType": "IMPACT/SHAKE",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "SOS-LIVE-1793422592725",
+    "citizenId": "CITIZEN-ALAPPUZHA-99",
+    "lat": 9.4981,
+    "lng": 76.3388,
+    "timestamp": "2026-10-31T04:56:32.725Z",
+    "status": "RESOLVED",
+    "description": "[VOICE_EMERGENCY] Water entering home, elderly person requires immediate boat evacuation | Location: Alappuzha South",
+    "emergencyType": "FLOOD",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "SOS-VOICE-1793422336158",
+    "citizenId": "CITIZEN-NEDUMUDY-09",
+    "lat": 9.4354,
+    "lng": 76.4023,
+    "timestamp": "2026-10-31T04:52:16.158Z",
+    "status": "FALSE_ALARM",
+    "description": "[VOICE_EMERGENCY] Family of 4 trapped on terrace due to flash flooding | Location: Nedumudy",
+    "emergencyType": "TRAPPED",
+    "priority": "CRITICAL"
+  },
+  {
+    "id": "SOS-TEST-1793416318195",
+    "citizenId": "CITIZEN-KL-04",
+    "lat": 9.4981,
+    "lng": 76.3388,
+    "timestamp": "2026-10-31T03:11:58.195Z",
+    "status": "FALSE_ALARM",
+    "description": "[VOICE_EMERGENCY] Flood water has entered my home and rising fast",
+    "emergencyType": "FLOOD",
+    "priority": "CRITICAL"
+  }
+]

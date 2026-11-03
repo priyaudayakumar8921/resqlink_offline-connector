@@ -159,15 +159,19 @@ app.post('/api/v1/sos', async (req, res) => {
     const id = sosData.sosId || sosData.messageId || `SOS-${Date.now()}`;
     
     try {
+        const payload = {
+            id: id,
+            citizen_id: sosData.citizenId || 'UNKNOWN',
+            lat: sosData.latitude || null,
+            lng: sosData.longitude || null,
+            emergency_type: sosData.emergencyType || 'GENERAL',
+            priority: sosData.priority || 'NORMAL',
+            description: sosData.description || 'No description provided',
+            status: 'ACTIVE'
+        };
         const { error } = await supabase
             .from('sos_messages')
-            .insert([{
-                id: id,
-                citizen_id: sosData.citizenId || 'UNKNOWN',
-                lat: sosData.latitude || null,
-                lng: sosData.longitude || null,
-                status: 'ACTIVE'
-            }]);
+            .insert([payload]);
             
         if (error) throw error;
         res.status(201).json({ success: true, message: 'SOS saved' });

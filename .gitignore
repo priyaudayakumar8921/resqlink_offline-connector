@@ -11,3 +11,4 @@ gradle-8.2.1/
 .gradle/
 *.jar
 app/build/
+app/src/main/assets/model-en/

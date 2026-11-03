@@ -10,6 +10,7 @@ import com.resqlink.data.repository.SOSRepository;
 import com.resqlink.model.TransmissionStatus;
 import com.resqlink.util.AppLogger;
 
+import java.util.List;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -22,6 +23,10 @@ public class SOSViewModel extends AndroidViewModel {
     public SOSViewModel(@NonNull Application application) {
         super(application);
         repository = new SOSRepository(application);
+    }
+
+    public androidx.lifecycle.LiveData<List<SOSMessageEntity>> getAllSOSMessages() {
+        return repository.getAllSOSMessages();
     }
 
     public String createAndSaveSOS(String citizenId, Double lat, Double lng, Float accuracy) {

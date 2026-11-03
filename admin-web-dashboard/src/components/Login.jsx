@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldAlert, KeyRound, RadioTower, Building, ShieldCheck } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 export default function Login({ onLogin }) {
   const [stations, setStations] = useState([]);
@@ -66,7 +67,7 @@ export default function Login({ onLogin }) {
 
   useEffect(() => {
     generateCaptcha();
-    fetch('http://localhost:3000/api/v1/stations')
+    fetch(`${API_BASE_URL}/api/v1/stations`)
       .then(res => res.json())
       .then(data => setStations(data))
       .catch(err => {
@@ -86,7 +87,7 @@ export default function Login({ onLogin }) {
       return;
     }
     try {
-      const res = await fetch('http://localhost:3000/api/v1/login', {
+      const res = await fetch(`${API_BASE_URL}/api/v1/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stationId, password })
@@ -111,71 +112,114 @@ export default function Login({ onLogin }) {
   const filteredStations = stations.filter(s => s.department === department);
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-full">
-      <div className="glass-panel animate-slide-up" style={{ padding: '3rem', width: '100%', maxWidth: '480px' }}>
-        <div className="flex flex-col items-center gap-4" style={{ marginBottom: '2rem' }}>
-          <div className="pulse-animation" style={{ 
-            background: 'rgba(239, 68, 68, 0.2)', 
-            padding: '1rem', 
+    <div style={{
+      minHeight: '100vh',
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #090a0f 0%, #1a1c29 100%)',
+      backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(220, 38, 38, 0.15) 0%, transparent 50%), radial-gradient(circle at 10% 90%, rgba(37, 99, 235, 0.05) 0%, transparent 50%)',
+      fontFamily: "'Inter', system-ui, sans-serif"
+    }}>
+      <div className="animate-slide-up" style={{
+        width: '100%',
+        maxWidth: '480px',
+        padding: '3rem',
+        background: 'rgba(17, 24, 39, 0.7)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderRadius: '24px',
+        border: '1px solid rgba(255, 255, 255, 0.05)',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(220, 38, 38, 0.1) inset'
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2.5rem' }}>
+          <div className="pulse-animation" style={{
+            background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(153, 27, 27, 0.4) 100%)',
+            padding: '1.25rem',
             borderRadius: '50%',
-            color: 'var(--danger)'
+            color: '#f87171',
+            boxShadow: '0 0 20px rgba(220, 38, 38, 0.4)',
+            marginBottom: '1.5rem'
           }}>
-            <ShieldAlert size={48} />
+            <ShieldAlert size={56} strokeWidth={1.5} />
           </div>
-          <h1 className="text-gradient" style={{ fontSize: '2rem' }}>ResQLink Admin</h1>
-          <p className="text-muted">Command Center Access</p>
+          <h1 style={{ 
+            fontSize: '2.5rem', 
+            fontWeight: '800', 
+            background: 'linear-gradient(to right, #ffffff, #9ca3af)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            margin: '0 0 0.5rem 0',
+            letterSpacing: '-1px'
+          }}>RESQLINK</h1>
+          <p style={{ color: '#9ca3af', fontSize: '0.95rem', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '600' }}>
+            Restricted Admin Portal
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col w-full">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
-          <div className="input-group">
-            <label className="input-label flex items-center gap-2">
-              <Building size={16} /> Select Department
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#9ca3af', marginBottom: '0.75rem', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              <Building size={14} /> Department
             </label>
-            <div className="flex gap-4" style={{ marginTop: '0.5rem' }}>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="radio" 
-                  name="department" 
-                  value="POLICE" 
-                  checked={department === 'POLICE'}
-                  onChange={(e) => {
-                    setDepartment(e.target.value);
-                    setStationId('');
-                  }}
-                />
-                Police Station
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="radio" 
-                  name="department" 
-                  value="FIRE_AND_RESCUE" 
-                  checked={department === 'FIRE_AND_RESCUE'}
-                  onChange={(e) => {
-                    setDepartment(e.target.value);
-                    setStationId('');
-                  }}
-                />
-                Fire & Rescue
-              </label>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              {['POLICE', 'FIRE_AND_RESCUE'].map((dept) => (
+                <label key={dept} style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.875rem',
+                  background: department === dept ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                  border: `1px solid ${department === dept ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
+                  borderRadius: '12px',
+                  color: department === dept ? '#f87171' : '#6b7280',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '0.85rem',
+                  transition: 'all 0.2s'
+                }}>
+                  <input 
+                    type="radio" 
+                    name="department" 
+                    value={dept} 
+                    checked={department === dept}
+                    onChange={(e) => { setDepartment(e.target.value); setStationId(''); }}
+                    style={{ display: 'none' }}
+                  />
+                  {dept === 'POLICE' ? 'POLICE' : 'FIRE & RESCUE'}
+                </label>
+              ))}
             </div>
           </div>
 
           {department && (
-            <div className="input-group animate-slide-up" style={{ marginTop: '1rem' }}>
-              <label className="input-label flex items-center gap-2">
-                <RadioTower size={16} /> Select Station
+            <div className="animate-slide-up">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#9ca3af', marginBottom: '0.75rem', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                <RadioTower size={14} /> Station Location
               </label>
               <select
-                className="input-field"
+                style={{
+                  width: '100%',
+                  background: 'rgba(0, 0, 0, 0.2)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  padding: '1rem',
+                  color: '#f3f4f6',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  appearance: 'none',
+                  cursor: 'pointer'
+                }}
                 value={stationId}
                 onChange={(e) => setStationId(e.target.value)}
                 required
               >
-                <option value="" disabled>-- Select a Station --</option>
+                <option value="" disabled style={{ color: '#6b7280' }}>-- Select Assigned Station --</option>
                 {filteredStations.map(st => (
-                  <option key={st.stationId} value={st.stationId}>
+                  <option key={st.stationId} value={st.stationId} style={{ background: '#111827', color: '#fff' }}>
                     {st.stationName}
                   </option>
                 ))}
@@ -184,60 +228,116 @@ export default function Login({ onLogin }) {
           )}
           
           {stationId && (
-            <div className="animate-slide-up" style={{ marginTop: '1rem' }}>
-              <div className="input-group">
-                <label className="input-label flex items-center gap-2">
-                  <KeyRound size={16} /> Password
+            <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#9ca3af', marginBottom: '0.75rem', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <KeyRound size={14} /> Authorization Key
                 </label>
                 <input 
                   type="password" 
-                  className="input-field" 
-                  placeholder="••••••••"
+                  placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  style={{
+                    width: '100%',
+                    background: 'rgba(0, 0, 0, 0.2)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '12px',
+                    padding: '1rem',
+                    color: '#f3f4f6',
+                    fontSize: '1rem',
+                    outline: 'none',
+                    letterSpacing: '2px'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'rgba(239, 68, 68, 0.5)'}
+                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
                 />
               </div>
 
-              <div className="input-group" style={{ marginTop: '1rem' }}>
-                <label className="input-label flex items-center gap-2">
-                  <ShieldCheck size={16} /> Security Captcha
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#9ca3af', marginBottom: '0.75rem', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <ShieldCheck size={14} /> Security Validation
                 </label>
-                <div className="flex gap-2 items-center">
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                   <div style={{ 
-                    background: '#111', 
-                    padding: '0.75rem', 
-                    letterSpacing: '4px', 
+                    background: 'linear-gradient(to right, #000000, #111827)', 
+                    padding: '0.875rem 1.5rem', 
+                    letterSpacing: '6px', 
                     fontFamily: 'monospace',
-                    fontSize: '1.2rem',
-                    fontWeight: 'bold',
-                    color: 'var(--danger)',
-                    borderRadius: '4px',
-                    userSelect: 'none'
+                    fontSize: '1.25rem',
+                    fontWeight: '800',
+                    color: '#f87171',
+                    borderRadius: '12px',
+                    userSelect: 'none',
+                    border: '1px dashed rgba(239, 68, 68, 0.3)',
+                    textShadow: '0 0 10px rgba(239, 68, 68, 0.5)'
                   }}>
                     {captchaText}
                   </div>
                   <input 
                     type="text" 
-                    className="input-field flex-1" 
-                    placeholder="Enter Captcha"
+                    placeholder="ENTER CAPTCHA"
                     value={captchaInput}
-                    onChange={(e) => setCaptchaInput(e.target.value)}
+                    onChange={(e) => setCaptchaInput(e.target.value.toUpperCase())}
                     required
+                    style={{
+                      flex: 1,
+                      background: 'rgba(0, 0, 0, 0.2)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '12px',
+                      padding: '1rem',
+                      color: '#f3f4f6',
+                      fontSize: '1rem',
+                      outline: 'none',
+                      textTransform: 'uppercase',
+                      letterSpacing: '2px'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = 'rgba(239, 68, 68, 0.5)'}
+                    onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
                   />
                 </div>
               </div>
 
-              {error && <div style={{ color: 'var(--danger)', marginTop: '1rem', textAlign: 'center' }}>{error}</div>}
+              {error && (
+                <div className="animate-slide-up" style={{ 
+                  color: '#f87171', 
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  padding: '1rem',
+                  borderRadius: '12px',
+                  textAlign: 'center',
+                  fontSize: '0.9rem',
+                  fontWeight: '500'
+                }}>
+                  {error}
+                </div>
+              )}
 
-              <button type="submit" className="btn btn-primary w-full" style={{ marginTop: '1.5rem' }}>
-                Access Dashboard
+              <button type="submit" style={{ 
+                marginTop: '1rem',
+                width: '100%',
+                padding: '1.25rem',
+                background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '1.1rem',
+                fontWeight: '700',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                boxShadow: '0 10px 25px -5px rgba(220, 38, 38, 0.4)',
+                transition: 'all 0.2s',
+              }}
+              onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
+              onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+              >
+                AUTHENTICATE
               </button>
             </div>
           )}
         </form>
-
-
       </div>
     </div>
   );

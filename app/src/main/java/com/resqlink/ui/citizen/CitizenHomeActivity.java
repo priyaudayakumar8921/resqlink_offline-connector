@@ -15,6 +15,9 @@ import androidx.core.app.ActivityCompat;
 
 import android.provider.Settings;
 import android.net.Uri;
+import android.graphics.Color;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import androidx.appcompat.app.AlertDialog;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +43,11 @@ public class CitizenHomeActivity extends AppCompatActivity {
         binding = ActivityCitizenHomeBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         
+        com.resqlink.network.HubDiscoverer.startDiscovery(this);
+        com.resqlink.network.HubConnectionManager.getInstance(this).probeAndConnect(this, null);
+        
         setupSOSButton();
+        setupHubStatusMonitoring();
         updateStatuses();
         
         // Start the persistent Foreground Service for Alerts
@@ -61,10 +68,12 @@ public class CitizenHomeActivity extends AppCompatActivity {
         requestMeshPermissions();
         checkOverlayPermission();
         
-        binding.btnManage2G.setOnClickListener(v -> {
-            startActivity(new Intent(this, EmergencyContactsActivity.class));
-        });
-    }
+        // Pre-load Vosk AI Voice Model in the background for MAXIMUM SPEED later
+        new Thread(() -> {
+            try {
+                org.vosk.android.StorageService.unpack(this, "model-en", "model", (m) -> {}, (e) -> {});
+            } catch (Exception ignored) {}
+        }).start();    }
     
     private void checkOverlayPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -103,6 +112,10 @@ public class CitizenHomeActivity extends AppCompatActivity {
             isSosTriggered = true;
             binding.progressSOS.setVisibility(View.VISIBLE);
             triggerSOS();
+        });
+
+        binding.btnVoiceEmergency.setOnClickListener(v -> {
+            startActivity(new Intent(this, com.resqlink.ui.voice.VoiceEmergencyActivity.class));
         });
     }
 
@@ -211,10 +224,88 @@ public class CitizenHomeActivity extends AppCompatActivity {
         });
     }
 
+    private void setupHubStatusMonitoring() {
+        HubConnectionManager hubManager = HubConnectionManager.getInstance(this);
+
+        hubManager.getHubStatus().observe(this, status -> {
+            String currentUrl = hubManager.getCurrentUrl();
+            if (status == HubConnectionManager.HubStatus.CONNECTED) {
+                binding.tvHubStatus.setText("EMERGENCY HUB: ● CONNECTED (" + currentUrl + ")");
+                binding.tvHubStatus.setTextColor(Color.parseColor("#2E7D32")); // Green
+                binding.tvNetworkStatus.setText("NETWORK: ● LOCAL MESH / HUB ACTIVE");
+                binding.tvNetworkStatus.setTextColor(Color.parseColor("#2E7D32"));
+            } else if (status == HubConnectionManager.HubStatus.CONNECTING) {
+                binding.tvHubStatus.setText("EMERGENCY HUB: ● SCANNING (Wi-Fi Direct / Local)...");
+                binding.tvHubStatus.setTextColor(Color.parseColor("#E65100")); // Orange
+                binding.tvNetworkStatus.setText("NETWORK: ● SEARCHING FOR LOCAL HUB");
+                binding.tvNetworkStatus.setTextColor(Color.parseColor("#E65100"));
+            } else {
+                binding.tvHubStatus.setText("EMERGENCY HUB: ● NOT CONNECTED (Tap to configure)");
+                binding.tvHubStatus.setTextColor(Color.parseColor("#C62828")); // Red
+                binding.tvNetworkStatus.setText("NETWORK: ● OFFLINE MODE");
+                binding.tvNetworkStatus.setTextColor(Color.parseColor("#757575"));
+            }
+        });
+
+        // Tap on hub status or status box to configure/test connection
+        View.OnClickListener configListener = v -> showHubConfigDialog();
+        binding.tvHubStatus.setOnClickListener(configListener);
+        binding.llStatus.setOnClickListener(configListener);
+    }
+
+    private void showHubConfigDialog() {
+        HubConnectionManager hubManager = HubConnectionManager.getInstance(this);
+        String currentUrl = hubManager.getCurrentUrl();
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Emergency Hub Connection");
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(48, 24, 48, 12);
+
+        android.widget.TextView tvHint = new android.widget.TextView(this);
+        tvHint.setText("Enter the Mock Hub or ESP32 Node API URL:\n• Wi-Fi Direct: http://192.168.49.1:3000/api/v1\n• Local Wi-Fi / Hotspot: http://<PC_IP>:3000/api/v1\n• Android Emulator: http://10.0.2.2:3000/api/v1");
+        tvHint.setTextSize(13);
+        tvHint.setTextColor(Color.parseColor("#616161"));
+        tvHint.setPadding(0, 0, 0, 16);
+        layout.addView(tvHint);
+
+        EditText etUrl = new EditText(this);
+        etUrl.setText(currentUrl);
+        etUrl.setHint("http://192.168.49.1:3000/api/v1");
+        etUrl.setSingleLine(true);
+        layout.addView(etUrl);
+
+        builder.setView(layout);
+
+        builder.setPositiveButton("Save & Connect", (dialog, which) -> {
+            String entered = etUrl.getText().toString().trim();
+            if (!entered.isEmpty()) {
+                hubManager.setHubUrl(entered, this);
+                Toast.makeText(this, "Connecting to " + entered + "...", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        builder.setNeutralButton("Auto-Detect / Scan", (dialog, which) -> {
+            Toast.makeText(this, "Scanning Wi-Fi Direct, Gateway & UDP broadcasts...", Toast.LENGTH_SHORT).show();
+            com.resqlink.network.HubDiscoverer.startDiscovery(this);
+            hubManager.probeAndConnect(this, (success, url) -> {
+                if (success) {
+                    Toast.makeText(this, "Connected to Hub: " + url, Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "No local hub responded. Check Wi-Fi / PC firewall.", Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
     private void updateStatuses() {
         binding.tvGpsStatus.setText("GPS: ● READY");
-        binding.tvHubStatus.setText("EMERGENCY HUB: ● NOT CONNECTED");
-        binding.tvNetworkStatus.setText("NETWORK: ● OFFLINE MODE");
+        // Status monitoring handles tvHubStatus and tvNetworkStatus
     }
 
     @Override

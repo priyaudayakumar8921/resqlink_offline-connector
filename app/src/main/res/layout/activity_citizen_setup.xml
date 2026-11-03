@@ -41,19 +41,7 @@
             android:inputType="phone"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="32dp"
-        android:hint="Hub Server Base URL (Local Hosting)">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etHubIp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="http://192.168.1.5:3000/api/v1"
-            android:inputType="textUri"/>
-    </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnSave"

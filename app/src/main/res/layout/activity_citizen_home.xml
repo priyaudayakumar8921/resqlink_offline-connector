@@ -82,15 +82,18 @@
         app:layout_constraintEnd_toEndOf="@id/btnSOS" />
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnManage2G"
+        android:id="@+id/btnVoiceEmergency"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Manage 2G Contacts"
-        style="@style/Widget.Material3.Button.OutlinedButton"
-        app:layout_constraintBottom_toTopOf="@+id/llStatus"
+        android:text="VOICE EMERGENCY"
+        app:icon="@android:drawable/ic_btn_speak_now"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@+id/btnSOS"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginBottom="16dp" />
+        app:layout_constraintEnd_toEndOf="parent" />
+
+
 
     <LinearLayout
         android:id="@+id/llStatus"

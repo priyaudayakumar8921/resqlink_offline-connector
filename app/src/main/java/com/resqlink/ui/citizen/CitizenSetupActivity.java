@@ -40,15 +40,19 @@ public class CitizenSetupActivity extends AppCompatActivity {
     private void saveProfile() {
         String name = binding.etName.getText() != null ? binding.etName.getText().toString().trim() : "";
         String phone = binding.etPhone.getText() != null ? binding.etPhone.getText().toString().trim() : "";
-        String hubIp = binding.etHubIp.getText() != null ? binding.etHubIp.getText().toString().trim() : "http://192.168.1.5:3000/api/v1";
+        
+        String currentHubUrl = com.resqlink.network.HubConnectionManager.getInstance(this).getCurrentUrl();
         
         String newCitizenId = "CIT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         
         viewModel.saveProfile(newCitizenId, name, phone);
         
-        SharedPreferences.Editor editor = getSharedPreferences("ResQLinkPrefs", MODE_PRIVATE).edit();
+        SharedPreferences prefs = getSharedPreferences("ResQLinkPrefs", MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
         editor.putBoolean("is_citizen_setup", true);
-        editor.putString("hub_base_url", hubIp);
+        if (!prefs.contains("hub_base_url")) {
+            editor.putString("hub_base_url", currentHubUrl);
+        }
         editor.apply();
         
         Toast.makeText(this, "Profile Saved", Toast.LENGTH_SHORT).show();

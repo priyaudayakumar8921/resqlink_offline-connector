@@ -53,6 +53,7 @@ public class EmergencyPollingService extends Service implements SensorEventListe
     
     private ScheduledExecutorService scheduler;
     private String lastBroadcastMessage = null;
+    private boolean isInitialPoll = true;
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
     private final java.util.Set<String> processedSosIds = new java.util.HashSet<>();
@@ -60,7 +61,7 @@ public class EmergencyPollingService extends Service implements SensorEventListe
     // Shake Detection Variables
     private SensorManager sensorManager;
     private Sensor accelerometer;
-    private static final float SHAKE_THRESHOLD_GRAVITY = 2.7F;
+    private static final float SHAKE_THRESHOLD_GRAVITY = 1.5F; // Lowered for easier detection
     private static final int SHAKE_SLOP_TIME_MS = 500;
     private static final int SHAKE_COUNT_RESET_TIME_MS = 3000;
     private long mShakeTimestamp;
@@ -72,6 +73,10 @@ public class EmergencyPollingService extends Service implements SensorEventListe
     public void onCreate() {
         super.onCreate();
         createNotificationChannels();
+
+        // Start UDP auto-discovery of Mock Hub
+        com.resqlink.network.HubDiscoverer.startDiscovery(getApplicationContext());
+        com.resqlink.network.HubConnectionManager.getInstance(getApplicationContext()).probeAndConnect(getApplicationContext(), null);
         
         // Acquire WakeLock to keep CPU and motion sensors running when screen is off
         PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
@@ -154,20 +159,44 @@ public class EmergencyPollingService extends Service implements SensorEventListe
         if (scheduler == null || scheduler.isShutdown()) {
             scheduler = Executors.newSingleThreadScheduledExecutor();
             scheduler.scheduleAtFixedRate(() -> {
-                String latest = HubConnectionManager.getInstance(getApplicationContext()).getClient().fetchLatestBroadcast();
-                if (latest != null && !latest.equals(lastBroadcastMessage)) {
-                    lastBroadcastMessage = latest;
-                    triggerAlert(latest);
-                    
-                    // Broadcast the alert to mesh
-                    P2PPayload payload = new P2PPayload(P2PPayload.TYPE_ALERT, latest, System.currentTimeMillis());
-                    P2PMeshManager.getInstance(this).broadcastPayload(payload);
+                try {
+                    com.resqlink.data.remote.HubClient hubClient = HubConnectionManager.getInstance(getApplicationContext()).getClient();
+                    boolean healthy = hubClient.checkHealth();
+                    HubConnectionManager.getInstance(getApplicationContext()).reportHealth(healthy);
+
+                    if (healthy) {
+                        String latest = hubClient.fetchLatestBroadcast();
+                        if (latest != null && !latest.trim().isEmpty()) {
+                            if (isInitialPoll) {
+                                isInitialPoll = false;
+                                lastBroadcastMessage = latest;
+                                getSharedPreferences("ResQLinkPrefs", MODE_PRIVATE)
+                                        .edit().putString("last_seen_broadcast", latest).apply();
+                                AppLogger.d(TAG, "Initial connect: baselined existing broadcast without ringing: " + latest);
+                            } else if (!latest.equals(lastBroadcastMessage)) {
+                                android.content.SharedPreferences prefs = getSharedPreferences("ResQLinkPrefs", MODE_PRIVATE);
+                                String saved = prefs.getString("last_seen_broadcast", "");
+                                if (!latest.equals(saved)) {
+                                    lastBroadcastMessage = latest;
+                                    prefs.edit().putString("last_seen_broadcast", latest).apply();
+                                    triggerAlert(latest);
+                                    
+                                    // Broadcast the alert to mesh
+                                    P2PPayload payload = new P2PPayload(P2PPayload.TYPE_ALERT, latest, System.currentTimeMillis());
+                                    P2PMeshManager.getInstance(this).broadcastPayload(payload);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    HubConnectionManager.getInstance(getApplicationContext()).reportHealth(false);
                 }
-            }, 0, 5, TimeUnit.SECONDS);
+            }, 0, 4, TimeUnit.SECONDS);
         }
 
         // Start P2P Mesh
-        P2PMeshManager.getInstance(this).startMesh();
+        // Disabled to prevent Android from disconnecting from the PC's Wi-Fi network
+        // P2PMeshManager.getInstance(this).startMesh();
 
         return START_STICKY;
     }
@@ -183,32 +212,7 @@ public class EmergencyPollingService extends Service implements SensorEventListe
             screenWakeLock.acquire(10000); // Hold for 10 seconds to ensure user sees it
         }
 
-        // Vibrate fiercely
-        Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        if (vibrator != null) {
-            long[] pattern = {0, 1000, 500, 1000, 500, 1000}; // Wait, Vibrate, Wait, Vibrate, Wait, Vibrate
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1));
-            } else {
-                vibrator.vibrate(pattern, -1);
-            }
-        }
-
-        // Play 3 loud beeps bypassing silent mode using ALARM stream
-        new Thread(() -> {
-            try {
-                ToneGenerator toneGen = new ToneGenerator(AudioManager.STREAM_ALARM, 100); // 100 = Max volume
-                for (int i = 0; i < 3; i++) {
-                    toneGen.startTone(ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 600); // 600ms duration
-                    Thread.sleep(1000); // Wait 1 second between beeps
-                }
-                toneGen.release();
-            } catch (Exception e) {
-                AppLogger.e(TAG, "Failed to play emergency tone", e);
-            }
-        }).start();
-
-        // Flash camera LED 3 times
+        // Flash camera LED 3 times (keep this for visual alert)
         new Thread(() -> {
             try {
                 CameraManager camManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
@@ -226,30 +230,49 @@ public class EmergencyPollingService extends Service implements SensorEventListe
             }
         }).start();
 
-        // 1. Show High Priority Notification
+        // 1. Prepare Intent for Full Screen UI
         Intent notifIntent = new Intent(this, com.resqlink.ui.citizen.BroadcastAlertActivity.class);
         notifIntent.putExtra("BROADCAST_MESSAGE", message);
         notifIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK 
                 | Intent.FLAG_ACTIVITY_CLEAR_TOP 
                 | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 
-        int uniqueId = (int) System.currentTimeMillis();
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, uniqueId, notifIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        // 2. Forcefully Start the Activity (Works if we have Display Over Other Apps permission)
+        try {
+            startActivity(notifIntent);
+        } catch (Exception e) {
+            AppLogger.e(TAG, "Failed to startActivity directly", e);
+        }
+
+        // 3. Notification with direct "STOP ALARM" action button
+        Intent stopIntent = new Intent(this, StopAlertReceiver.class);
+        stopIntent.setAction(StopAlertReceiver.ACTION_STOP_ALERT);
+        PendingIntent stopPendingIntent = PendingIntent.getBroadcast(
+            this, ALERT_NOTIFICATION_ID, stopIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, ALERT_NOTIFICATION_ID, notifIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_alert)
-                .setContentTitle("EMERGENCY BROADCAST")
+                .setContentTitle("🚨 EMERGENCY BROADCAST")
                 .setContentText(message)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(message))
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setFullScreenIntent(pendingIntent, true) // Wakes up screen if possible
+                .addAction(android.R.drawable.ic_media_pause, "⏹ SILENCE / STOP ALARM", stopPendingIntent)
+                .setDeleteIntent(stopPendingIntent) // Also silences if user dismisses/swipes notification
                 .setAutoCancel(true);
 
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager != null) {
-            manager.notify(uniqueId, builder.build());
-            AppLogger.d(TAG, "Fired FullScreenIntent Notification with ID: " + uniqueId);
+            manager.notify(ALERT_NOTIFICATION_ID, builder.build());
+            AppLogger.d(TAG, "Fired Emergency Alert Notification with ID: " + ALERT_NOTIFICATION_ID);
         }
+
+        // 4. Start loud alarm sound & vibration (with 30-second safety auto-stop)
+        com.resqlink.util.AlertSoundManager.startAlert(this, 30000);
     }
 
     private void createNotificationChannels() {
@@ -280,6 +303,7 @@ public class EmergencyPollingService extends Service implements SensorEventListe
     @Override
     public void onDestroy() {
         super.onDestroy();
+        com.resqlink.util.AlertSoundManager.stopAlert(this);
         if (scheduler != null) {
             scheduler.shutdownNow();
         }
@@ -323,6 +347,9 @@ public class EmergencyPollingService extends Service implements SensorEventListe
                 if (mShakeTimestamp + SHAKE_SLOP_TIME_MS > now) {
                     return;
                 }
+                if (!isAppInForeground()) {
+                    return;
+                }
                 
                 // reset the shake count after 3 seconds of no shakes
                 if (mShakeTimestamp + SHAKE_COUNT_RESET_TIME_MS < now) {
@@ -332,8 +359,8 @@ public class EmergencyPollingService extends Service implements SensorEventListe
                 mShakeTimestamp = now;
                 mShakeCount++;
 
-                // Trigger after 2 consecutive strong shakes
-                if (mShakeCount >= 2) {
+                // Trigger after 1 small shake as requested
+                if (mShakeCount >= 1) {
                     triggerShakeSos();
                     mShakeCount = 0;
                 }
@@ -354,7 +381,7 @@ public class EmergencyPollingService extends Service implements SensorEventListe
         }
         
         lastSosTriggerTime = now;
-        AppLogger.d(TAG, "VIOLENT SHAKE DETECTED! Triggering Auto-SOS!");
+        AppLogger.d(TAG, "SHAKE DETECTED! Triggering Auto-SOS!");
         
         // Vibrate to confirm shake registered
         Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
@@ -422,5 +449,20 @@ public class EmergencyPollingService extends Service implements SensorEventListe
                 }
             });
         });
+    }
+
+    private boolean isAppInForeground() {
+        android.app.ActivityManager activityManager = (android.app.ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        if (activityManager == null) return false;
+        java.util.List<android.app.ActivityManager.RunningAppProcessInfo> appProcesses = activityManager.getRunningAppProcesses();
+        if (appProcesses == null) return false;
+        final String packageName = getPackageName();
+        for (android.app.ActivityManager.RunningAppProcessInfo appProcess : appProcesses) {
+            if (appProcess.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+                    && appProcess.processName.equals(packageName)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

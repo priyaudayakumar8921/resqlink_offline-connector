@@ -1,35 +1,51 @@
 -- ============================================================
--- RESQLINK - ALAPPUZHA DISTRICT EMERGENCY STATION ACCOUNTS
--- Supabase Schema and Seed Data
+-- RESQLINK DISASTER SOS - COMPLETE FRESH RESET & SETUP SCRIPT
+-- ============================================================
+-- Paste this entire script into your Supabase SQL Editor and click RUN.
+-- It safely drops previous tables and creates the complete schema
+-- with support for Voice Transcripts, Priority, Category, and Stations.
 -- ============================================================
 
--- 1. Create Tables
-CREATE TABLE IF NOT EXISTS public.stations (
+-- STEP 1: CLEAN SLATE (Safely drop older tables and policies)
+DROP TABLE IF EXISTS public.sos_messages CASCADE;
+DROP TABLE IF EXISTS public.stations CASCADE;
+DROP TABLE IF EXISTS public.broadcasts CASCADE;
+DROP TABLE IF EXISTS public.notices CASCADE;
+
+-- STEP 2: CREATE STATIONS TABLE (Police & Fire Emergency Accounts)
+CREATE TABLE public.stations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     station_id TEXT UNIQUE NOT NULL,
     station_name TEXT NOT NULL,
     department TEXT NOT NULL,
     username TEXT NOT NULL,
     temporary_password TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'ACTIVE'
-);
-
-CREATE TABLE IF NOT EXISTS public.sos_messages (
-    id TEXT PRIMARY KEY,
-    citizen_id TEXT NOT NULL,
-    lat FLOAT,
-    lng FLOAT,
     status TEXT NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
-CREATE TABLE IF NOT EXISTS public.broadcasts (
+-- STEP 3: CREATE SOS MESSAGES TABLE (All Emergency Data Logs)
+CREATE TABLE public.sos_messages (
+    id TEXT PRIMARY KEY,
+    citizen_id TEXT NOT NULL,
+    lat FLOAT,
+    lng FLOAT,
+    emergency_type TEXT DEFAULT 'GENERAL',
+    priority TEXT DEFAULT 'NORMAL',
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- STEP 4: CREATE BROADCASTS TABLE (District Emergency Warnings)
+CREATE TABLE public.broadcasts (
     id TEXT PRIMARY KEY,
     message TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
-CREATE TABLE IF NOT EXISTS public.notices (
+-- STEP 5: CREATE NOTICES TABLE (Inter-Department Directives)
+CREATE TABLE public.notices (
     id TEXT PRIMARY KEY,
     sender TEXT NOT NULL,
     target TEXT NOT NULL,
@@ -38,7 +54,39 @@ CREATE TABLE IF NOT EXISTS public.notices (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 2. Insert Seed Data
+-- STEP 6: PERFORMANCE INDEXES (Fast Filtering on Dates, Coordinates & Severity)
+CREATE INDEX idx_sos_created_at ON public.sos_messages (created_at DESC);
+CREATE INDEX idx_sos_status ON public.sos_messages (status);
+CREATE INDEX idx_sos_priority ON public.sos_messages (priority);
+CREATE INDEX idx_sos_emergency_type ON public.sos_messages (emergency_type);
+
+-- STEP 7: ROW LEVEL SECURITY (RLS) POLICIES
+-- Ensures that the Hub Server and Dashboard are NEVER blocked by permissions
+ALTER TABLE public.stations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sos_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.broadcasts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notices ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow full access to stations" ON public.stations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to sos_messages" ON public.sos_messages FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to broadcasts" ON public.broadcasts FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to notices" ON public.notices FOR ALL USING (true) WITH CHECK (true);
+
+-- STEP 8: ENABLE REALTIME REPLICATION (For live dashboard updates)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'sos_messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.sos_messages;
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    NULL;
+END $$;
+
+-- STEP 9: SEED ALL 42 ALAPPUZHA DISTRICT EMERGENCY ACCOUNTS
 INSERT INTO public.stations (station_id, station_name, department, username, temporary_password, status) VALUES
 ('POL-ALP-SOUTH', 'Alappuzha South Police Station', 'POLICE', 'ALP_POL_SOUTH', 'ALP@South2026', 'ACTIVE'),
 ('POL-ALP-NORTH', 'Alappuzha North Police Station', 'POLICE', 'ALP_POL_NORTH', 'ALP@North2026', 'ACTIVE'),
@@ -81,5 +129,4 @@ INSERT INTO public.stations (station_id, station_name, department, username, tem
 ('FRS-HARIPAD', 'Fire and Rescue Station, Haripad', 'FIRE_AND_RESCUE', 'ALP_FRS_HARIPAD', 'FRS@Haripad2026', 'ACTIVE'),
 ('FRS-KAYAMKULAM', 'Fire and Rescue Station, Kayamkulam', 'FIRE_AND_RESCUE', 'ALP_FRS_KAYAMKULAM', 'FRS@Kayamkulam2026', 'ACTIVE'),
 ('FRS-MAVELIKKARA', 'Fire and Rescue Station, Mavelikkara', 'FIRE_AND_RESCUE', 'ALP_FRS_MAVELIKKARA', 'FRS@Mavelikkara2026', 'ACTIVE'),
-('FRS-CHENGANNUR', 'Fire and Rescue Station, Chengannur', 'FIRE_AND_RESCUE', 'ALP_FRS_CHENGANNUR', 'FRS@Chengannur2026', 'ACTIVE')
-ON CONFLICT (station_id) DO NOTHING;
+('FRS-CHENGANNUR', 'Fire and Rescue Station, Chengannur', 'FIRE_AND_RESCUE', 'ALP_FRS_CHENGANNUR', 'FRS@Chengannur2026', 'ACTIVE');

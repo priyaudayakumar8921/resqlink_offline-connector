@@ -10,8 +10,10 @@ import android.app.KeyguardManager;
 import android.widget.Button;
 import android.widget.TextView;
 import com.resqlink.R;
+import com.resqlink.util.AlertSoundManager;
 
 public class BroadcastAlertActivity extends Activity {
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,8 +37,6 @@ public class BroadcastAlertActivity extends Activity {
         }
 
         setContentView(R.layout.activity_broadcast_alert);
-        
-        // Ensure this doesn't get dismissed when touching outside
         setFinishOnTouchOutside(false);
 
         String message = getIntent().getStringExtra("BROADCAST_MESSAGE");
@@ -47,7 +47,34 @@ public class BroadcastAlertActivity extends Activity {
         TextView tvAlertMessage = findViewById(R.id.tvAlertMessage);
         tvAlertMessage.setText(message);
 
+        // Ensure alarm is sounding (max 30s auto-stop)
+        if (!AlertSoundManager.isPlaying()) {
+            AlertSoundManager.startAlert(this, 30000);
+        }
+
+        // Listen for stop events (e.g. if stopped from notification bar)
+        AlertSoundManager.setStopListener(() -> runOnUiThread(this::finish));
+
         Button btnAcknowledge = findViewById(R.id.btnAcknowledge);
-        btnAcknowledge.setOnClickListener(v -> finish());
+        btnAcknowledge.setText("ACKNOWLEDGE & STOP ALARM");
+        btnAcknowledge.setOnClickListener(v -> {
+            AlertSoundManager.stopAlert(this);
+            finish();
+        });
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (isFinishing()) {
+            AlertSoundManager.stopAlert(this);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        AlertSoundManager.removeStopListener();
+        AlertSoundManager.stopAlert(this);
     }
 }

@@ -15,6 +15,14 @@ public class LocalHttpHubClient implements HubClient {
         this.apiService.setBaseUrl(customUrl);
     }
 
+    public void setBaseUrl(String customUrl) {
+        this.apiService.setBaseUrl(customUrl);
+    }
+
+    public String getBaseUrl() {
+        return this.apiService.getBaseUrl();
+    }
+
     @Override
     public boolean checkHealth() {
         return apiService.checkHealth();

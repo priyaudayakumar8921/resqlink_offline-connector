@@ -21,24 +21,49 @@ public class HubApiService {
     public static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     
     // Default base URL for the emergency hub
-    private String baseUrl = "http://10.203.184.223:3000/api/v1";
+    private String baseUrl = "http://10.0.2.2:3000/api/v1";
 
     public HubApiService() {
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor(message -> AppLogger.d("OkHttp", message));
         logging.setLevel(HttpLoggingInterceptor.Level.BODY);
 
         client = new OkHttpClient.Builder()
-                .connectTimeout(5, TimeUnit.SECONDS)
-                .readTimeout(5, TimeUnit.SECONDS)
-                .writeTimeout(5, TimeUnit.SECONDS)
+                .connectTimeout(3, TimeUnit.SECONDS)
+                .readTimeout(3, TimeUnit.SECONDS)
+                .writeTimeout(3, TimeUnit.SECONDS)
                 .addInterceptor(logging)
+                .addInterceptor(chain -> {
+                    Request original = chain.request();
+                    Request request = original.newBuilder()
+                            .header("Bypass-Tunnel-Reminder", "true")
+                            .header("User-Agent", "ResQLink-App")
+                            .build();
+                    return chain.proceed(request);
+                })
                 .build();
                 
         gson = new Gson();
     }
     
     public void setBaseUrl(String url) {
-        this.baseUrl = url;
+        if (url != null && !url.trim().isEmpty()) {
+            url = url.trim();
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                url = "http://" + url;
+            }
+            if (url.endsWith("/")) {
+                url = url.substring(0, url.length() - 1);
+            }
+            if (!url.endsWith("/api/v1")) {
+                url = url + "/api/v1";
+            }
+            this.baseUrl = url;
+            AppLogger.d(TAG, "Base URL updated to: " + this.baseUrl);
+        }
+    }
+
+    public String getBaseUrl() {
+        return this.baseUrl;
     }
 
     public boolean checkHealth() {
