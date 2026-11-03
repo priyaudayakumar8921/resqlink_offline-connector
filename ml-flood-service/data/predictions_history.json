@@ -1,0 +1,15 @@
+[
+  {
+    "id": "PRED-1793699932721",
+    "timestamp": "2026-11-03T09:58:52.721566+00:00",
+    "district_id": "IDU",
+    "district_name": "Idukki",
+    "lat": 9.8494,
+    "lng": 76.972,
+    "horizon": "24h",
+    "risk_category": "CRITICAL",
+    "probability": 0.9998,
+    "status": "LIVE",
+    "model_version": "v2.4.0 (XGBoost Ensemble)"
+  }
+]

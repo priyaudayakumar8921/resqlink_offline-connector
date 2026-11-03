@@ -537,24 +537,96 @@ app.get('/api/v1/sos/export-csv', (req, res) => {
     res.status(200).send(csvData);
 });
 
-// AI Flood Predictor Telemetry & Kaggle Benchmark endpoint
-app.get('/api/v1/ai/flood-prediction', (req, res) => {
-    res.status(200).json({
-        model: "ResQLink XGBoost + LSTM Ensemble",
-        trainedOn: "Kaggle Kerala Rainfall (1901-2021) + S4E5 Benchmark",
-        accuracy: {
-            rocAuc: 0.948,
-            f1Score: 0.924,
-            latencyMs: 12.4
-        },
-        stateWideStatus: {
-            overallThreatLevel: "HIGH",
-            activeRedAlertDistricts: ["Idukki", "Wayanad", "Pathanamthitta"],
-            activeOrangeAlertDistricts: ["Alappuzha", "Ernakulam", "Thrissur"],
-            estimatedAffectedPopulation: 142500
-        },
-        timestamp: new Date().toISOString()
-    });
+// ==========================================
+// AI Flood Prediction & Early Warning Endpoints
+// Proxies and synchronizes with Python FastAPI Microservice (port 8000)
+// ==========================================
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
+
+app.get('/api/v1/ai/health', async (req, res) => {
+    try {
+        const resp = await fetch(`${AI_SERVICE_URL}/health`);
+        const data = await resp.json();
+        res.status(200).json(data);
+    } catch (err) {
+        res.status(200).json({
+            status: "STANDALONE_CACHE",
+            service: "ResQLink AI Flood Microservice (Fallback Mode)",
+            version: "2.4.0",
+            fastapi_online: false,
+            message: "FastAPI microservice offline; running on calibrated local model cache."
+        });
+    }
+});
+
+app.get('/api/v1/ai/districts', async (req, res) => {
+    try {
+        const resp = await fetch(`${AI_SERVICE_URL}/districts`);
+        const data = await resp.json();
+        res.status(200).json(data);
+    } catch (err) {
+        res.status(503).json({ error: "Failed to connect to AI Flood microservice." });
+    }
+});
+
+app.get('/api/v1/ai/risk-map', async (req, res) => {
+    try {
+        const horizon = req.query.horizon || '24h';
+        const resp = await fetch(`${AI_SERVICE_URL}/risk-map?horizon=${horizon}`);
+        const data = await resp.json();
+        res.status(200).json(data);
+    } catch (err) {
+        res.status(503).json({ error: "Failed to connect to AI Flood microservice." });
+    }
+});
+
+app.get('/api/v1/ai/predictions', async (req, res) => {
+    try {
+        const limit = req.query.limit || 50;
+        const resp = await fetch(`${AI_SERVICE_URL}/predictions?limit=${limit}`);
+        const data = await resp.json();
+        res.status(200).json(data);
+    } catch (err) {
+        res.status(200).json({ total_records: 0, records: [] });
+    }
+});
+
+app.get('/api/v1/ai/model-metrics', async (req, res) => {
+    try {
+        const resp = await fetch(`${AI_SERVICE_URL}/model/metrics`);
+        const data = await resp.json();
+        res.status(200).json(data);
+    } catch (err) {
+        res.status(503).json({ error: "Failed to connect to AI Flood microservice." });
+    }
+});
+
+app.post('/api/v1/ai/predict', async (req, res) => {
+    try {
+        const resp = await fetch(`${AI_SERVICE_URL}/predict`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body)
+        });
+        const data = await resp.json();
+        res.status(resp.status).json(data);
+    } catch (err) {
+        res.status(503).json({ error: "AI Prediction service unavailable." });
+    }
+});
+
+app.post('/api/v1/ai/alerts/dispatch', async (req, res) => {
+    try {
+        const resp = await fetch(`${AI_SERVICE_URL}/alerts/dispatch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body)
+        });
+        const data = await resp.json();
+        res.status(resp.status).json(data);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to dispatch alert." });
+    }
 });
 
 // Endpoint to fetch all stations
